@@ -36,7 +36,10 @@ class _CreatePackScreenState extends ConsumerState<CreatePackScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Nomeie sua colecao', style: Theme.of(context).textTheme.headlineMedium),
+                Text(
+                  'Nomeie sua colecao',
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
                 const SizedBox(height: 8),
                 Text(
                   'Este formulario cria a base do pack que depois recebera stickers, preview e exportacao para o WhatsApp.',
@@ -83,26 +86,41 @@ class _CreatePackScreenState extends ConsumerState<CreatePackScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Proximas etapas do fluxo', style: Theme.of(context).textTheme.titleLarge),
+                      Text(
+                        'Proximas etapas do fluxo',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
                       const SizedBox(height: 12),
                       const _StepBullet(text: 'Selecionar imagem da galeria'),
-                      const _StepBullet(text: 'Recortar e redimensionar para 512x512'),
-                      const _StepBullet(text: 'Converter para WEBP e anexar ao pack'),
-                      const _StepBullet(text: 'Registrar o pack para exportacao Android'),
+                      const _StepBullet(
+                        text: 'Recortar e redimensionar para 512x512',
+                      ),
+                      const _StepBullet(
+                        text: 'Converter para WEBP e anexar ao pack',
+                      ),
+                      const _StepBullet(
+                        text: 'Registrar o pack para exportacao Android',
+                      ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  onPressed: _isSaving ? null : _save,
-                  icon: _isSaving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.check_circle_outline_rounded),
-                  label: Text(_isSaving ? 'Salvando...' : 'Criar pack'),
+                SizedBox(
+                  width: double.infinity,
+                  child: SizedBox(
+                    height: 54,
+                    child: ElevatedButton.icon(
+                      onPressed: _isSaving ? null : _save,
+                      icon: _isSaving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.check_circle_outline_rounded),
+                      label: Text(_isSaving ? 'Salvando...' : 'Criar pack'),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -122,7 +140,9 @@ class _CreatePackScreenState extends ConsumerState<CreatePackScreen> {
     });
 
     try {
-      final pack = await ref.read(packsControllerProvider.notifier).createPack(
+      final pack = await ref
+          .read(packsControllerProvider.notifier)
+          .createPack(
             name: _nameController.text.trim(),
             author: _authorController.text.trim(),
           );

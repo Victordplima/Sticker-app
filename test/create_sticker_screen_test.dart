@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
 
-import 'package:sticker/app.dart';
 import 'package:sticker/modules/packs/models/sticker_pack.dart';
 import 'package:sticker/modules/packs/services/packs_controller.dart';
 import 'package:sticker/modules/packs/services/packs_repository.dart';
 import 'package:sticker/modules/stickers/models/sticker.dart';
+import 'package:sticker/modules/stickers/screens/create_sticker_screen.dart';
 
 void main() {
-  testWidgets('renders repository packs on startup', (
+  testWidgets('renderiza estado inicial da criacao de sticker', (
     WidgetTester tester,
   ) async {
     final repository = PacksRepository.inMemory(
@@ -24,23 +24,6 @@ void main() {
               filePath: 'samples/coffee-1.webp',
               emojis: ['☕'],
             ),
-            Sticker(
-              id: 'coffee-2',
-              filePath: 'samples/coffee-2.webp',
-              emojis: ['😺'],
-            ),
-          ],
-        ),
-        StickerPack(
-          id: 'pack-work-mood',
-          name: 'Work Mood',
-          author: 'Equipe Interna',
-          stickers: [
-            Sticker(
-              id: 'work-1',
-              filePath: 'samples/work-1.webp',
-              emojis: ['💻'],
-            ),
           ],
         ),
       ],
@@ -49,22 +32,25 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [packsRepositoryProvider.overrideWithValue(repository)],
-        child: const StickerStudioApp(),
+        child: const MaterialApp(
+          home: CreateStickerScreen(packId: 'pack-coffee-cats'),
+        ),
       ),
     );
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Sticker Studio'), findsOneWidget);
-    expect(find.text('Coffee Cats'), findsOneWidget);
+    expect(find.text('Criar sticker'), findsOneWidget);
+    expect(find.text('Novo sticker para Coffee Cats'), findsOneWidget);
+    expect(find.text('Selecionar da galeria'), findsOneWidget);
 
     await tester.scrollUntilVisible(
-      find.text('Work Mood'),
+      find.text('Gerar e adicionar ao pack'),
       300,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Work Mood'), findsOneWidget);
+    expect(find.text('Gerar e adicionar ao pack'), findsOneWidget);
   });
 }

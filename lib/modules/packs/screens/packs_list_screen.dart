@@ -58,7 +58,10 @@ class _PacksListContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final totalStickers = packs.fold<int>(0, (count, pack) => count + pack.stickerCount);
+    final totalStickers = packs.fold<int>(
+      0,
+      (count, pack) => count + pack.stickerCount,
+    );
 
     return CustomScrollView(
       slivers: [
@@ -68,19 +71,28 @@ class _PacksListContent extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Sticker Studio', style: Theme.of(context).textTheme.displayMedium),
+                Text(
+                  'Sticker Studio',
+                  style: Theme.of(context).textTheme.displayMedium,
+                ),
                 const SizedBox(height: 8),
                 Text(
                   'Monte colecoes prontas para exportar ao WhatsApp com uma base preparada para stickers estaticos e animados.',
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
                 const SizedBox(height: AppSpacing.section),
-                _HeroSummary(totalPacks: packs.length, totalStickers: totalStickers),
+                _HeroSummary(
+                  totalPacks: packs.length,
+                  totalStickers: totalStickers,
+                ),
                 const SizedBox(height: AppSpacing.section),
                 Row(
                   children: [
                     Expanded(
-                      child: Text('Seus packs', style: Theme.of(context).textTheme.headlineMedium),
+                      child: Text(
+                        'Seus packs',
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      ),
                     ),
                     TextButton.icon(
                       onPressed: () => context.go('/packs/create'),
@@ -99,7 +111,8 @@ class _PacksListContent extends ConsumerWidget {
               padding: AppSpacing.pageInsets,
               child: AppEmptyState(
                 title: 'Seu primeiro pack comeca aqui',
-                message: 'Crie uma colecao, depois conectamos a etapa de recorte e exportacao.',
+                message:
+                    'Crie uma colecao, depois conectamos a etapa de recorte e exportacao.',
                 actionLabel: 'Criar pack',
                 onAction: () => context.go('/packs/create'),
               ),
@@ -107,7 +120,12 @@ class _PacksListContent extends ConsumerWidget {
           )
         else
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.page, 0, AppSpacing.page, 96),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.page,
+              0,
+              AppSpacing.page,
+              96,
+            ),
             sliver: SliverList.separated(
               itemCount: packs.length,
               itemBuilder: (context, index) {
@@ -117,7 +135,9 @@ class _PacksListContent extends ConsumerWidget {
                   pack: pack,
                   onOpen: () => context.go('/packs/${pack.id}'),
                   onDelete: () async {
-                    await ref.read(packsControllerProvider.notifier).removePack(pack.id);
+                    await ref
+                        .read(packsControllerProvider.notifier)
+                        .removePack(pack.id);
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('Pack ${pack.name} removido.')),
@@ -165,7 +185,9 @@ class _HeroSummary extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'A estrutura do MVP ja separa packs, stickers, servicos e widgets compartilhados.',
-            style: theme.textTheme.bodyMedium?.copyWith(color: const Color(0xFFF3E9DE)),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: const Color(0xFFF3E9DE),
+            ),
           ),
           const SizedBox(height: 20),
           Wrap(
@@ -200,9 +222,19 @@ class _SummaryPill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(value, style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white)),
+          Text(
+            value,
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(color: Colors.white),
+          ),
           const SizedBox(width: 8),
-          Text(label, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: const Color(0xFFF3E9DE))),
+          Text(
+            label,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: const Color(0xFFF3E9DE)),
+          ),
         ],
       ),
     );

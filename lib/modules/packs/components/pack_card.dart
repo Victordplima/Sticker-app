@@ -44,21 +44,30 @@ class PackCard extends StatelessWidget {
                       top: 14,
                       left: 14,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.85),
                           borderRadius: BorderRadius.circular(99),
                         ),
                         child: Text(
                           '${pack.stickerCount} stickers',
-                          style: theme.textTheme.labelLarge?.copyWith(color: const Color(0xFF1E1612)),
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: const Color(0xFF1E1612),
+                          ),
                         ),
                       ),
                     ),
                     const Positioned(
                       right: 16,
                       bottom: 16,
-                      child: Icon(Icons.photo_library_rounded, size: 44, color: Colors.white),
+                      child: Icon(
+                        Icons.photo_library_rounded,
+                        size: 44,
+                        color: Colors.white,
+                      ),
                     ),
                   ],
                 ),
@@ -73,7 +82,10 @@ class PackCard extends StatelessWidget {
                       children: [
                         Text(pack.name, style: theme.textTheme.titleLarge),
                         const SizedBox(height: 4),
-                        Text('por ${pack.author}', style: theme.textTheme.bodyMedium),
+                        Text(
+                          'por ${pack.author}',
+                          style: theme.textTheme.bodyMedium,
+                        ),
                       ],
                     ),
                   ),

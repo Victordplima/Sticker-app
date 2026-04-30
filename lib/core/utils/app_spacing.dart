@@ -6,5 +6,8 @@ abstract final class AppSpacing {
   static const card = 16.0;
   static const item = 12.0;
 
-  static const pageInsets = EdgeInsets.symmetric(horizontal: page, vertical: 16);
+  static const pageInsets = EdgeInsets.symmetric(
+    horizontal: page,
+    vertical: 16,
+  );
 }

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../modules/packs/screens/create_pack_screen.dart';
 import '../../modules/packs/screens/pack_details_screen.dart';
 import '../../modules/packs/screens/packs_list_screen.dart';
+import '../../modules/stickers/screens/create_sticker_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -23,6 +24,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               final packId = state.pathParameters['packId']!;
               return PackDetailsScreen(packId: packId);
             },
+            routes: [
+              GoRoute(
+                path: 'stickers/create',
+                builder: (context, state) {
+                  final packId = state.pathParameters['packId']!;
+                  return CreateStickerScreen(packId: packId);
+                },
+              ),
+            ],
           ),
         ],
       ),
