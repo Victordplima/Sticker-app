@@ -3,7 +3,6 @@ package com.example.sticker
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.content.ClipData
 import android.net.Uri
 import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
@@ -16,6 +15,7 @@ class MainActivity : FlutterActivity() {
 		private const val ADD_STICKER_PACK_ACTION = "com.whatsapp.intent.action.ENABLE_STICKER_PACK"
 		private const val CONSUMER_WHATSAPP_PACKAGE = "com.whatsapp"
 		private const val BUSINESS_WHATSAPP_PACKAGE = "com.whatsapp.w4b"
+		private const val ADD_PACK_REQUEST_CODE = 200
 	}
 
 	override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -89,17 +89,15 @@ class MainActivity : FlutterActivity() {
 
 	private fun addStickerPack(packData: StickerPackData) {
 		val authority = "$packageName.stickercontentprovider"
-		val intent = Intent(ADD_STICKER_PACK_ACTION).apply {
+		val intent = Intent().apply {
+			action = ADD_STICKER_PACK_ACTION
 			putExtra("sticker_pack_id", packData.identifier)
 			putExtra("sticker_pack_authority", authority)
 			putExtra("sticker_pack_name", packData.name)
-			addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
 		}
 
-		// Verifica se o provider expõe metadata para este pack
-		// Encode path segments to avoid issues with spaces/charset in identifiers/names
-		val encodedId = Uri.encode(packData.identifier)
-		val metadataUri = Uri.parse("content://$authority/metadata/$encodedId")
+		// Verify the ContentProvider exposes metadata for this pack
+		val metadataUri = Uri.parse("content://$authority/metadata/${packData.identifier}")
 		val resolver = applicationContext.contentResolver
 		resolver.query(metadataUri, null, null, null, null)?.use { cursor ->
 			if (cursor.count == 0) {
@@ -107,52 +105,7 @@ class MainActivity : FlutterActivity() {
 			}
 		} ?: throw IllegalStateException("Provider nao encontrado: $authority")
 
-		// Prepara ClipData com metadata, tray e todos os stickers para transferir permissões
-		val clip = ClipData.newUri(resolver, "sticker_pack_metadata", metadataUri)
-
-		// adiciona tray icon (codificando segmentos)
-		val trayFileName = packData.trayImageFile.substringAfterLast('/')
-		val trayUri = Uri.parse("content://$authority/stickers_asset/$encodedId/${Uri.encode(trayFileName)}")
-		clip.addItem(ClipData.Item(trayUri))
-
-		// adiciona cada sticker asset (codificando segmentos)
-		for (sticker in packData.stickers) {
-			val stickerUri = Uri.parse("content://$authority/stickers_asset/$encodedId/${Uri.encode(sticker.fileName)}")
-			clip.addItem(ClipData.Item(stickerUri))
-		}
-
-		intent.clipData = clip
-		intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-
-		// Pre-check: certificar que o ContentResolver consegue abrir os assets localmente
-		try {
-			// metadata
-			resolver.openAssetFileDescriptor(metadataUri, "r")?.close()
-
-			// tray
-			resolver.openAssetFileDescriptor(trayUri, "r")?.close()
-
-			// stickers
-			for (sticker in packData.stickers) {
-				val stickerUri = Uri.parse("content://$authority/stickers_asset/$encodedId/${Uri.encode(sticker.fileName)}")
-				resolver.openAssetFileDescriptor(stickerUri, "r")?.close()
-			}
-		} catch (e: Exception) {
-			throw IllegalStateException("Falha ao preparar stickers para o WhatsApp: ${e.message}")
-		}
-
-		// Validação de formato/tamanho das imagens
-		val invalids = mutableListOf<String>()
-		checkTrayImageUri(trayUri)?.let { invalids.add("tray: $it") }
-		for (sticker in packData.stickers) {
-			val stickerUri = Uri.parse("content://$authority/stickers_asset/$encodedId/${Uri.encode(sticker.fileName)}")
-			checkStickerImageUri(stickerUri)?.let { invalids.add("${sticker.fileName}: $it") }
-		}
-		if (invalids.isNotEmpty()) {
-			throw IllegalStateException("Imagens de stickers inválidas: ${invalids.joinToString("; ")}")
-		}
-
-		// Direciona preferencialmente para o pacote WhatsApp instalado
+		// Try WhatsApp consumer first, then business
 		val possibleTargets = listOfNotNull(
 			if (isPackageInstalled(CONSUMER_WHATSAPP_PACKAGE)) CONSUMER_WHATSAPP_PACKAGE else null,
 			if (isPackageInstalled(BUSINESS_WHATSAPP_PACKAGE)) BUSINESS_WHATSAPP_PACKAGE else null,
@@ -160,43 +113,30 @@ class MainActivity : FlutterActivity() {
 
 		var started = false
 
-		// Tenta com cada pacote preferido; concede permissão explícita como fallback
 		for (pkg in possibleTargets) {
 			intent.`package` = pkg
 			try {
-				applicationContext.grantUriPermission(pkg, metadataUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-				applicationContext.grantUriPermission(pkg, trayUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-				for (sticker in packData.stickers) {
-					val stickerUri = Uri.parse("content://$authority/stickers_asset/$encodedId/${Uri.encode(sticker.fileName)}")
-					applicationContext.grantUriPermission(pkg, stickerUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-				}
-			} catch (_: Exception) {
-				// ignore grant failures; fallback via ClipData + flags
-			}
-
-			val matches = packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
-			if (matches.isNotEmpty()) {
-				try {
-					startActivity(intent)
-					started = true
-					break
-				} catch (e: Exception) {
-					// continue to next
-				}
+				// WhatsApp requires startActivityForResult to show the dialog
+				startActivityForResult(intent, ADD_PACK_REQUEST_CODE)
+				started = true
+				break
+			} catch (e: ActivityNotFoundException) {
+				Log.w("MainActivity", "ActivityNotFoundException for $pkg", e)
+				// try next
+			} catch (e: Exception) {
+				Log.w("MainActivity", "Exception starting activity for $pkg", e)
+				// try next
 			}
 		}
 
 		if (!started) {
-			// fallback: try without specifying a package
+			// Fallback: try without specifying a package
 			intent.`package` = null
-			val matches = packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
-			if (matches.isNotEmpty()) {
-				try {
-					startActivity(intent)
-					started = true
-				} catch (e: Exception) {
-					// will throw below
-				}
+			try {
+				startActivityForResult(intent, ADD_PACK_REQUEST_CODE)
+				started = true
+			} catch (e: Exception) {
+				Log.e("MainActivity", "Fallback startActivityForResult failed", e)
 			}
 		}
 
@@ -212,15 +152,33 @@ class MainActivity : FlutterActivity() {
 	private fun checkTrayImageUri(uri: Uri): String? {
 		return try {
 			val resolver = applicationContext.contentResolver
+			var width = -1
+			var height = -1
+
+			// First attempt: bounds-only decode (fast)
 			resolver.openInputStream(uri)?.use { input ->
 				val options = android.graphics.BitmapFactory.Options()
 				options.inJustDecodeBounds = true
 				android.graphics.BitmapFactory.decodeStream(input, null, options)
-				val width = options.outWidth
-				val height = options.outHeight
-				if (width <= 0 || height <= 0) return "nao foi possivel decodificar imagem"
-				if (width != 96 || height != 96) return "tamanho invalido: ${width}x${height}"
+				width = options.outWidth
+				height = options.outHeight
 			} ?: return "nao foi possivel abrir stream"
+
+			// Fallback: full decode if bounds-only failed
+			if (width <= 0 || height <= 0) {
+				resolver.openInputStream(uri)?.use { input ->
+					val bitmap = android.graphics.BitmapFactory.decodeStream(input)
+					if (bitmap != null) {
+						width = bitmap.width
+						height = bitmap.height
+						bitmap.recycle()
+					}
+				}
+			}
+
+			if (width <= 0 || height <= 0) return "nao foi possivel decodificar imagem"
+			if (width != 96 || height != 96) return "tamanho invalido: ${width}x${height}"
+
 			val name = uri.lastPathSegment?.lowercase() ?: ""
 			if (!name.endsWith(".png")) return "formato invalido: esperado .png"
 			null
@@ -232,15 +190,34 @@ class MainActivity : FlutterActivity() {
 	private fun checkStickerImageUri(uri: Uri): String? {
 		return try {
 			val resolver = applicationContext.contentResolver
+			var width = -1
+			var height = -1
+
+			// First attempt: bounds-only decode (fast)
 			resolver.openInputStream(uri)?.use { input ->
 				val options = android.graphics.BitmapFactory.Options()
 				options.inJustDecodeBounds = true
 				android.graphics.BitmapFactory.decodeStream(input, null, options)
-				val width = options.outWidth
-				val height = options.outHeight
-				if (width <= 0 || height <= 0) return "nao foi possivel decodificar imagem"
-				if (width != 512 || height != 512) return "tamanho invalido: ${width}x${height}"
+				width = options.outWidth
+				height = options.outHeight
 			} ?: return "nao foi possivel abrir stream"
+
+			// Fallback: some valid WebP files (especially with alpha) return -1
+			// from inJustDecodeBounds. Do a full decode to verify.
+			if (width <= 0 || height <= 0) {
+				resolver.openInputStream(uri)?.use { input ->
+					val bitmap = android.graphics.BitmapFactory.decodeStream(input)
+					if (bitmap != null) {
+						width = bitmap.width
+						height = bitmap.height
+						bitmap.recycle()
+					}
+				}
+			}
+
+			if (width <= 0 || height <= 0) return "nao foi possivel decodificar imagem"
+			if (width != 512 || height != 512) return "tamanho invalido: ${width}x${height}"
+
 			val name = uri.lastPathSegment?.lowercase() ?: ""
 			if (!name.endsWith(".webp")) return "formato invalido: esperado .webp"
 			null

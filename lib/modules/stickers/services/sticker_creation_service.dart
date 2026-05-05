@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image/image.dart' as img;
+import 'dart:developer' as developer;
 import 'package:uuid/uuid.dart';
 
 import '../../../core/services/local_storage_path_service.dart';
@@ -81,14 +82,45 @@ class StickerCreationService {
     }
 
     final preparedImage = _prepareImage(decodedImage);
-    final pngBytes = Uint8List.fromList(img.encodePng(preparedImage, level: 6));
-    final webpBytes = await FlutterImageCompress.compressWithList(
-      pngBytes,
-      format: CompressFormat.webp,
-      minHeight: targetDimension,
-      minWidth: targetDimension,
-      quality: 96,
-    );
+    final pngList = img.encodePng(preparedImage, level: 6);
+    final pngBytes = Uint8List.fromList(pngList);
+    if (pngBytes.isEmpty) {
+      throw const StickerCreationException(
+        'Falha ao gerar PNG interno antes de converter para WEBP.',
+      );
+    }
+
+    // WhatsApp limits static stickers to 100 KB. Start at quality 80 and
+    // reduce if the output exceeds the budget.
+    const int maxStickerBytes = 100 * 1024;
+    Uint8List webpBytes = Uint8List(0);
+    int quality = 80;
+
+    while (quality >= 30) {
+      try {
+        final compressedResult = await FlutterImageCompress.compressWithList(
+          pngBytes,
+          format: CompressFormat.webp,
+          minHeight: targetDimension,
+          minWidth: targetDimension,
+          quality: quality,
+        );
+        webpBytes = Uint8List.fromList(compressedResult);
+      } catch (e, st) {
+        developer.log('erro ao comprimir para WEBP (quality=$quality): $e',
+            name: 'StickerCreationService', error: e, stackTrace: st);
+        if (quality <= 30) {
+          throw StickerCreationException(
+              'Falha ao converter a imagem para WEBP: $e');
+        }
+      }
+
+      if (webpBytes.isNotEmpty && webpBytes.lengthInBytes <= maxStickerBytes) {
+        break;
+      }
+
+      quality -= 10;
+    }
 
     if (webpBytes.isEmpty) {
       throw const StickerCreationException(
@@ -105,6 +137,14 @@ class StickerCreationService {
       '${packDirectory.path}${Platform.pathSeparator}$stickerId.webp',
     );
     await outputFile.writeAsBytes(webpBytes, flush: true);
+
+    // Validate written file
+    final writtenLength = await outputFile.length();
+    if (writtenLength == 0) {
+      throw const StickerCreationException(
+        'O arquivo WEBP foi escrito com 0 bytes. Tente novamente.',
+      );
+    }
 
     return Sticker(id: stickerId, filePath: outputFile.path, emojis: emojis);
   }

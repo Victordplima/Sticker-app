@@ -1,7 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:developer' as developer;
 
 import 'package:image/image.dart' as img;
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'dart:typed_data';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/services/local_storage_path_service.dart';
@@ -13,7 +16,7 @@ class PacksRepository {
     LocalStoragePathService? storagePathService,
     List<StickerPack> initialPacks = const [],
     bool persist = true,
-  }) : _storagePathService = storagePathService,
+  }) : _storagePathService = storagePathService ?? const LocalStoragePathService(),
        _persist = persist,
        _packs = List<StickerPack>.from(initialPacks);
 
@@ -21,7 +24,7 @@ class PacksRepository {
     : this(initialPacks: initialPacks, persist: false);
 
   final Uuid _uuid = const Uuid();
-  final LocalStoragePathService? _storagePathService;
+  final LocalStoragePathService _storagePathService;
   final bool _persist;
   final List<StickerPack> _packs;
   bool _isLoaded = false;
@@ -75,7 +78,7 @@ class PacksRepository {
     _packs.removeWhere((pack) => pack.id == packId);
 
     if (_persist) {
-      await _storagePathService!.deletePackDirectory(packId);
+      await _storagePathService.deletePackDirectory(packId);
     }
   }
 
@@ -104,7 +107,7 @@ class PacksRepository {
   }
 
   Future<List<StickerPack>> _loadPersistedPacks() async {
-    final packsDirectory = await _storagePathService!.getPacksDirectory();
+    final packsDirectory = await _storagePathService.getPacksDirectory();
     final children = await packsDirectory.list().toList();
     final packDirectories = children.whereType<Directory>().toList()
       ..sort((left, right) => right.path.compareTo(left.path));
@@ -131,7 +134,7 @@ class PacksRepository {
       return;
     }
 
-    final metadataFile = await _storagePathService!.getPackMetadataFile(
+    final metadataFile = await _storagePathService.getPackMetadataFile(
       pack.id,
     );
     await metadataFile.writeAsString(jsonEncode(pack.toMap()), flush: true);
@@ -158,7 +161,7 @@ class PacksRepository {
       _packs[index] = updatedPack;
     }
     // Persist metadata and contents
-    final metadataFile = await _storagePathService!.getPackMetadataFile(packId);
+    final metadataFile = await _storagePathService.getPackMetadataFile(packId);
     await metadataFile.writeAsString(
       jsonEncode(updatedPack.toMap()),
       flush: true,
@@ -171,12 +174,127 @@ class PacksRepository {
       return;
     }
 
-    final contentsFile = await _storagePathService!.getPackContentsFile(
+    final contentsFile = await _storagePathService.getPackContentsFile(
       pack.id,
     );
     final trayFileName = pack.trayImagePath == null
-        ? ''
-        : _fileName(pack.trayImagePath!);
+      ? ''
+      : _fileName(pack.trayImagePath!);
+    // We'll build the contents after exporting/converting sticker files
+    final exportedStickerEntries = <Map<String, dynamic>>[];
+
+    // Ensure stickers are exported into the pack directory (convert when needed)
+    final stickersDir = await _storagePathService.getPackStickersDirectory(pack.id);
+    for (final sticker in pack.stickers) {
+      try {
+        final source = File(sticker.filePath);
+        if (!await source.exists()) {
+          developer.log('sticker nao encontrado, pulando: ${sticker.filePath}', name: 'PacksRepository');
+          continue;
+        }
+
+        final sourceLen = await source.length();
+        if (sourceLen == 0) {
+          developer.log('sticker vazio, pulando: ${sticker.filePath}', name: 'PacksRepository');
+          continue;
+        }
+
+        final originalFileName = _fileName(sticker.filePath);
+        final baseName = originalFileName.contains('.')
+            ? originalFileName.substring(0, originalFileName.lastIndexOf('.'))
+            : originalFileName;
+
+        // Decide desired extension: prefer webp for static stickers, keep original for animated
+        final sourceExt = sticker.filePath.contains('.') ? sticker.filePath.split('.').last.toLowerCase() : '';
+        final desiredExt = sticker.isAnimated ? sourceExt : 'webp';
+
+        final destFileName = '$baseName.$desiredExt';
+        final dest = File('${stickersDir.path}${Platform.pathSeparator}$destFileName');
+
+        // CRITICAL: If source and dest are the same file, skip copy to avoid
+        // truncating the file to 0 bytes (self-copy is destructive on some systems).
+        final isSameFile = source.path == dest.path;
+
+        if (isSameFile) {
+          // File is already in the correct location; just add the entry
+          exportedStickerEntries.add({'image_file': 'stickers/$destFileName', 'emojis': sticker.emojis});
+          continue;
+        }
+
+        // If animated or already same extension, just copy original
+        if (sticker.isAnimated || sourceExt == desiredExt) {
+          await source.copy(dest.path);
+          exportedStickerEntries.add({'image_file': 'stickers/$destFileName', 'emojis': sticker.emojis});
+          continue;
+        }
+
+        // Source needs conversion to desiredExt — try to decode and re-encode
+        final bytes = await source.readAsBytes();
+        final decoded = img.decodeImage(bytes);
+        if (decoded == null) {
+          // fallback: copy as-is
+          await source.copy(dest.path);
+          exportedStickerEntries.add({'image_file': 'stickers/$destFileName', 'emojis': sticker.emojis});
+          continue;
+        }
+
+        // Prepare image: center on square canvas with transparent background, target 512
+        final targetDim = 512;
+        final resized = _resizePreservingAspectRatioForExport(decoded, targetDim);
+        final canvas = img.Image(width: targetDim, height: targetDim, numChannels: 4);
+        img.fill(canvas, color: img.ColorRgba8(0, 0, 0, 0));
+        final left = ((targetDim - resized.width) / 2).round();
+        final top = ((targetDim - resized.height) / 2).round();
+        img.compositeImage(canvas, resized, dstX: left, dstY: top);
+
+        if (desiredExt == 'webp') {
+          final pngBytes = img.encodePng(canvas);
+          if (pngBytes.isEmpty) {
+            developer.log('encodePng retornou bytes vazios para ${source.path}', name: 'PacksRepository');
+            await source.copy(dest.path);
+          } else {
+            try {
+              final webpBytes = await FlutterImageCompress.compressWithList(
+                Uint8List.fromList(pngBytes),
+                format: CompressFormat.webp,
+                minHeight: targetDim,
+                minWidth: targetDim,
+                quality: 96,
+              );
+              if (webpBytes.isNotEmpty) {
+                await dest.writeAsBytes(webpBytes, flush: true);
+              } else {
+                await source.copy(dest.path);
+              }
+            } catch (e, st) {
+              developer.log('erro ao comprimir $destFileName: $e', name: 'PacksRepository', error: e, stackTrace: st);
+              await source.copy(dest.path);
+            }
+          }
+        } else if (desiredExt == 'png') {
+          final pngBytes = img.encodePng(canvas);
+          await dest.writeAsBytes(pngBytes, flush: true);
+        } else {
+          final pngBytes = img.encodePng(canvas);
+          await dest.writeAsBytes(pngBytes, flush: true);
+        }
+
+        // Final sanity check: ensure dest is non-empty
+        try {
+          if (!await dest.exists() || await dest.length() == 0) {
+            developer.log('destino vazio/inexistente apos escrita, fazendo fallback copy: ${source.path} -> ${dest.path}', name: 'PacksRepository');
+            await source.copy(dest.path);
+          }
+        } catch (e, st) {
+          developer.log('falha no fallback copy: $e', name: 'PacksRepository', error: e, stackTrace: st);
+        }
+
+        exportedStickerEntries.add({'image_file': 'stickers/$destFileName', 'emojis': sticker.emojis});
+      } catch (e, st) {
+        developer.log('erro processando sticker ${sticker.filePath}: $e', name: 'PacksRepository', error: e, stackTrace: st);
+      }
+    }
+
     final contents = {
       'identifier': pack.id,
       'name': pack.name,
@@ -184,19 +302,23 @@ class PacksRepository {
       'tray_image_file': trayFileName,
       'image_data_version': DateTime.now().millisecondsSinceEpoch.toString(),
       'avoid_cache': false,
-      'animated_sticker_pack': pack.stickers.any(
-        (sticker) => sticker.isAnimated,
-      ),
-      'stickers': [
-        for (final sticker in pack.stickers)
-          {
-            'image_file': 'stickers/${_fileName(sticker.filePath)}',
-            'emojis': sticker.emojis,
-          },
-      ],
+      'animated_sticker_pack': pack.stickers.any((sticker) => sticker.isAnimated),
+      'stickers': exportedStickerEntries,
     };
 
     await contentsFile.writeAsString(jsonEncode(contents), flush: true);
+  }
+
+  img.Image _resizePreservingAspectRatioForExport(img.Image source, int target) {
+    if (source.width == target && source.height == target) {
+      return source;
+    }
+
+    if (source.width >= source.height) {
+      return img.copyResize(source, width: target);
+    }
+
+    return img.copyResize(source, height: target);
   }
 
   Future<String?> _writeTrayImageFromPack(StickerPack pack) async {
@@ -215,9 +337,15 @@ class PacksRepository {
       return pack.trayImagePath;
     }
 
-    final tray = img.copyResizeCropSquare(image, size: 96);
-    final trayFile = await _storagePathService!.getPackTrayImageFile(pack.id);
-    await trayFile.writeAsBytes(img.encodePng(tray), flush: true);
+    final targetDim = 96;
+    final resized = _resizePreservingAspectRatioForExport(image, targetDim);
+    final canvas = img.Image(width: targetDim, height: targetDim, numChannels: 4);
+    img.fill(canvas, color: img.ColorRgba8(0, 0, 0, 0));
+    final left = ((targetDim - resized.width) / 2).round();
+    final top = ((targetDim - resized.height) / 2).round();
+    img.compositeImage(canvas, resized, dstX: left, dstY: top);
+    final trayFile = await _storagePathService.getPackTrayImageFile(pack.id);
+    await trayFile.writeAsBytes(img.encodePng(canvas), flush: true);
     return trayFile.path;
   }
 
@@ -244,7 +372,7 @@ class PacksRepository {
       color: img.ColorRgba8(36, 28, 23, 255),
     );
 
-    final trayFile = await _storagePathService!.getPackTrayImageFile(packId);
+    final trayFile = await _storagePathService.getPackTrayImageFile(packId);
     await trayFile.writeAsBytes(img.encodePng(image), flush: true);
     return trayFile.path;
   }
