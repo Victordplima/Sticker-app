@@ -165,9 +165,11 @@ class _StickerEditorScreenState extends State<StickerEditorScreen> {
                     hasSelectedLayer: selectedLayer != null,
                     hasSelectedTextLayer:
                         selectedLayer?.type == _StickerLayerType.text,
-                    canBringForward: selectedLayer != null &&
+                    canBringForward:
+                        selectedLayer != null &&
                         _layers.indexOf(selectedLayer) < _layers.length - 1,
-                    canSendBackward: selectedLayer != null &&
+                    canSendBackward:
+                        selectedLayer != null &&
                         _layers.indexOf(selectedLayer) > 0,
                     onAddText: _addTextLayer,
                     onEditText: _editSelectedTextLayer,
@@ -195,12 +197,15 @@ class _StickerEditorScreenState extends State<StickerEditorScreen> {
                     layerScaleValue: selectedLayer?.scale ?? 1.0,
                     layerRotationValue: selectedLayer?.rotation ?? 0.0,
                     layerOpacityValue: selectedLayer?.opacity ?? 1.0,
-                    onLayerScaleChanged:
-                        selectedLayer != null ? _updateLayerScale : null,
-                    onLayerRotationChanged:
-                        selectedLayer != null ? _updateLayerRotation : null,
-                    onLayerOpacityChanged:
-                        selectedLayer != null ? _updateLayerOpacity : null,
+                    onLayerScaleChanged: selectedLayer != null
+                        ? _updateLayerScale
+                        : null,
+                    onLayerRotationChanged: selectedLayer != null
+                        ? _updateLayerRotation
+                        : null,
+                    onLayerOpacityChanged: selectedLayer != null
+                        ? _updateLayerOpacity
+                        : null,
                     bgScaleValue: _backgroundScale,
                     bgRotationValue: _backgroundRotation,
                     onBgScaleChanged: _updateBgScale,
@@ -224,14 +229,14 @@ class _StickerEditorScreenState extends State<StickerEditorScreen> {
   // ── Undo / Redo ───────────────────────────────────────────────────────────
 
   _EditorSnapshot _snap() => _EditorSnapshot(
-        layers: List.from(_layers),
-        selectedLayerId: _selectedLayerId,
-        backgroundOffset: _backgroundOffset,
-        backgroundScale: _backgroundScale,
-        backgroundRotation: _backgroundRotation,
-        backgroundFlipX: _backgroundFlipX,
-        backgroundFlipY: _backgroundFlipY,
-      );
+    layers: List.from(_layers),
+    selectedLayerId: _selectedLayerId,
+    backgroundOffset: _backgroundOffset,
+    backgroundScale: _backgroundScale,
+    backgroundRotation: _backgroundRotation,
+    backgroundFlipX: _backgroundFlipX,
+    backgroundFlipY: _backgroundFlipY,
+  );
 
   void _pushHistory() {
     _redoStack.clear();
@@ -309,8 +314,10 @@ class _StickerEditorScreenState extends State<StickerEditorScreen> {
     setState(() {
       _backgroundOffset =
           _gestureStartOffset + (d.focalPoint - _gestureStartFocalPoint);
-      _backgroundScale =
-          (_gestureStartScale * d.scale).clamp(_minScale, _maxScale);
+      _backgroundScale = (_gestureStartScale * d.scale).clamp(
+        _minScale,
+        _maxScale,
+      );
       _backgroundRotation = _gestureStartBackgroundRotation + d.rotation;
     });
   }
@@ -340,15 +347,19 @@ class _StickerEditorScreenState extends State<StickerEditorScreen> {
         d.globalPosition.dy - center.dy,
         d.globalPosition.dx - center.dx,
       );
-      setState(() => _backgroundRotation =
-          _gestureStartBackgroundRotation +
-              (angle - _backgroundHandleStartAngle));
+      setState(
+        () => _backgroundRotation =
+            _gestureStartBackgroundRotation +
+            (angle - _backgroundHandleStartAngle),
+      );
     } else if (kind == 'scale') {
       final dist = (d.globalPosition - center).distance;
       if (_gestureStartBackgroundDistance > 0) {
-        setState(() => _backgroundScale =
-            (_gestureStartScale * dist / _gestureStartBackgroundDistance)
-                .clamp(_minScale, _maxScale));
+        setState(
+          () => _backgroundScale =
+              (_gestureStartScale * dist / _gestureStartBackgroundDistance)
+                  .clamp(_minScale, _maxScale),
+        );
       }
     }
   }
@@ -452,9 +463,9 @@ class _StickerEditorScreenState extends State<StickerEditorScreen> {
       });
     } on Exception catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao adicionar imagem: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro ao adicionar imagem: $e')));
     } finally {
       if (mounted) setState(() => _isPickingOverlay = false);
     }
@@ -502,16 +513,14 @@ class _StickerEditorScreenState extends State<StickerEditorScreen> {
     final sel = _selectedLayer;
     if (sel == null) return;
     _pushHistory();
-    _updateLayer(
-        sel.id, (c) => c.copyWith(rotation: c.rotation + math.pi / 2));
+    _updateLayer(sel.id, (c) => c.copyWith(rotation: c.rotation + math.pi / 2));
   }
 
   void _rotateSelectedLayerCCW() {
     final sel = _selectedLayer;
     if (sel == null) return;
     _pushHistory();
-    _updateLayer(
-        sel.id, (c) => c.copyWith(rotation: c.rotation - math.pi / 2));
+    _updateLayer(sel.id, (c) => c.copyWith(rotation: c.rotation - math.pi / 2));
   }
 
   void _bringLayerForward() {
@@ -578,7 +587,9 @@ class _StickerEditorScreenState extends State<StickerEditorScreen> {
     final sel = _selectedLayer;
     if (sel == null) return;
     _updateLayer(
-        sel.id, (c) => c.copyWith(scale: v.clamp(_minScale, _maxScale)));
+      sel.id,
+      (c) => c.copyWith(scale: v.clamp(_minScale, _maxScale)),
+    );
   }
 
   void _updateLayerRotation(double v) {
@@ -596,8 +607,7 @@ class _StickerEditorScreenState extends State<StickerEditorScreen> {
   void _updateBgScale(double v) =>
       setState(() => _backgroundScale = v.clamp(_minScale, _maxScale));
 
-  void _updateBgRotation(double v) =>
-      setState(() => _backgroundRotation = v);
+  void _updateBgRotation(double v) => setState(() => _backgroundRotation = v);
 
   // ── Export ────────────────────────────────────────────────────────────────
 
@@ -606,12 +616,12 @@ class _StickerEditorScreenState extends State<StickerEditorScreen> {
     setState(() => _isExporting = true);
     try {
       await WidgetsBinding.instance.endOfFrame;
-      final boundary = _canvasKey.currentContext?.findRenderObject()
-          as RenderRepaintBoundary?;
+      final boundary =
+          _canvasKey.currentContext?.findRenderObject()
+              as RenderRepaintBoundary?;
       if (boundary == null) throw StateError('Canvas indisponivel.');
       final image = await boundary.toImage(pixelRatio: 3);
-      final byteData =
-          await image.toByteData(format: ui.ImageByteFormat.png);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       image.dispose();
       if (byteData == null || !mounted) {
         throw StateError('Falha ao gerar imagem.');
@@ -619,15 +629,14 @@ class _StickerEditorScreenState extends State<StickerEditorScreen> {
       Navigator.of(context).pop(byteData.buffer.asUint8List());
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao exportar: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro ao exportar: $e')));
       setState(() => _isExporting = false);
     }
   }
 
-  Future<_TextLayerDraft?> _showTextLayerDialog(
-      {_TextLayerDraft? initial}) {
+  Future<_TextLayerDraft?> _showTextLayerDialog({_TextLayerDraft? initial}) {
     return showDialog<_TextLayerDraft>(
       context: context,
       builder: (ctx) =>
@@ -761,9 +770,11 @@ class _EditorCanvas extends StatelessWidget {
                             ..rotateZ(backgroundRotation),
                           alignment: Alignment.center,
                           child: Transform.scale(
-                            scaleX: (backgroundFlipX ? -1.0 : 1.0) *
+                            scaleX:
+                                (backgroundFlipX ? -1.0 : 1.0) *
                                 backgroundScale,
-                            scaleY: (backgroundFlipY ? -1.0 : 1.0) *
+                            scaleY:
+                                (backgroundFlipY ? -1.0 : 1.0) *
                                 backgroundScale,
                             alignment: Alignment.center,
                             child: Stack(
@@ -784,11 +795,9 @@ class _EditorCanvas extends StatelessWidget {
                                       icon: Icons.rotate_right,
                                       color: const Color(0xFF0F4FCB),
                                       onPanStart: (d) =>
-                                          onBackgroundHandleStart(
-                                              d, 'rotate'),
+                                          onBackgroundHandleStart(d, 'rotate'),
                                       onPanUpdate: (d) =>
-                                          onBackgroundHandleUpdate(
-                                              d, 'rotate'),
+                                          onBackgroundHandleUpdate(d, 'rotate'),
                                       onPanEnd: (d) =>
                                           onBackgroundHandleEnd(d, 'rotate'),
                                     ),
@@ -801,11 +810,9 @@ class _EditorCanvas extends StatelessWidget {
                                       icon: Icons.open_in_full,
                                       color: const Color(0xFF2A9D8F),
                                       onPanStart: (d) =>
-                                          onBackgroundHandleStart(
-                                              d, 'scale'),
+                                          onBackgroundHandleStart(d, 'scale'),
                                       onPanUpdate: (d) =>
-                                          onBackgroundHandleUpdate(
-                                              d, 'scale'),
+                                          onBackgroundHandleUpdate(d, 'scale'),
                                       onPanEnd: (d) =>
                                           onBackgroundHandleEnd(d, 'scale'),
                                     ),
@@ -866,9 +873,7 @@ class _CanvasHandle extends StatelessWidget {
           color: Colors.white,
           shape: BoxShape.circle,
           border: Border.all(color: color, width: 2),
-          boxShadow: const [
-            BoxShadow(color: Color(0x22000000), blurRadius: 6),
-          ],
+          boxShadow: const [BoxShadow(color: Color(0x22000000), blurRadius: 6)],
         ),
         child: Icon(icon, size: 16, color: color),
       ),
@@ -926,10 +931,10 @@ class _LayerWidget extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.all(6),
                     child: switch (layer.type) {
-                      _StickerLayerType.text =>
-                        _TextLayerPreview(layer: layer),
-                      _StickerLayerType.image =>
-                        _ImageLayerPreview(layer: layer),
+                      _StickerLayerType.text => _TextLayerPreview(layer: layer),
+                      _StickerLayerType.image => _ImageLayerPreview(
+                        layer: layer,
+                      ),
                     },
                   ),
                 ),
@@ -1093,22 +1098,21 @@ class _EditorToolbar extends StatelessWidget {
               _ToolBtn(
                 icon: Icons.edit_note_rounded,
                 label: 'Editar',
-                onPressed:
-                    isBusy || !hasSelectedTextLayer ? null : onEditText,
+                onPressed: isBusy || !hasSelectedTextLayer ? null : onEditText,
                 color: const Color(0xFF7C3AED),
               ),
               _ToolBtn(
                 icon: Icons.copy_rounded,
                 label: 'Duplicar',
-                onPressed:
-                    isBusy || !hasSelectedLayer ? null : onDuplicateLayer,
+                onPressed: isBusy || !hasSelectedLayer
+                    ? null
+                    : onDuplicateLayer,
                 color: const Color(0xFF0891B2),
               ),
               _ToolBtn(
                 icon: Icons.delete_outline_rounded,
                 label: 'Remover',
-                onPressed:
-                    isBusy || !hasSelectedLayer ? null : onRemoveLayer,
+                onPressed: isBusy || !hasSelectedLayer ? null : onRemoveLayer,
                 color: const Color(0xFFDC2626),
               ),
             ],
@@ -1133,30 +1137,28 @@ class _EditorToolbar extends StatelessWidget {
               _ToolBtn(
                 icon: Icons.flip_rounded,
                 label: 'Flip H',
-                onPressed:
-                    isBusy || !hasSelectedLayer ? null : onFlipHorizontal,
+                onPressed: isBusy || !hasSelectedLayer
+                    ? null
+                    : onFlipHorizontal,
                 color: const Color(0xFFF59E0B),
               ),
               _ToolBtn(
                 icon: Icons.flip_rounded,
                 label: 'Flip V',
-                onPressed:
-                    isBusy || !hasSelectedLayer ? null : onFlipVertical,
+                onPressed: isBusy || !hasSelectedLayer ? null : onFlipVertical,
                 color: const Color(0xFFF59E0B),
                 rotateIcon: math.pi / 2,
               ),
               _ToolBtn(
                 icon: Icons.arrow_upward_rounded,
                 label: 'Subir',
-                onPressed:
-                    isBusy || !canBringForward ? null : onBringForward,
+                onPressed: isBusy || !canBringForward ? null : onBringForward,
                 color: const Color(0xFF64748B),
               ),
               _ToolBtn(
                 icon: Icons.arrow_downward_rounded,
                 label: 'Descer',
-                onPressed:
-                    isBusy || !canSendBackward ? null : onSendBackward,
+                onPressed: isBusy || !canSendBackward ? null : onSendBackward,
                 color: const Color(0xFF64748B),
               ),
             ],
@@ -1221,10 +1223,10 @@ class _ToolbarSection extends StatelessWidget {
           Text(
             label.toUpperCase(),
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: const Color(0xFF94A3B8),
-                  letterSpacing: 1.1,
-                  fontWeight: FontWeight.w700,
-                ),
+              color: const Color(0xFF94A3B8),
+              letterSpacing: 1.1,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 10),
           SingleChildScrollView(
@@ -1282,8 +1284,7 @@ class _ToolBtn extends StatelessWidget {
         onTap: onPressed,
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             color: enabled
                 ? color.withValues(alpha: 0.10)
@@ -1405,8 +1406,7 @@ class _EditorInspector extends StatelessWidget {
           const Divider(height: 1, color: Color(0xFFE2E8F4)),
           Padding(
             padding: const EdgeInsets.all(20),
-            child:
-                tab == 0 ? _buildLayerTab(context) : _buildBgTab(),
+            child: tab == 0 ? _buildLayerTab(context) : _buildBgTab(),
           ),
         ],
       ),
@@ -1426,17 +1426,16 @@ class _EditorInspector extends StatelessWidget {
           Expanded(
             child: Text(
               'Selecione uma camada no canvas para ajustar escala, rotação e opacidade.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: const Color(0xFF94A3B8),
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF94A3B8)),
             ),
           ),
         ],
       );
     }
 
-    final layerLabel =
-        layerType == _StickerLayerType.text ? 'Texto' : 'Imagem';
+    final layerLabel = layerType == _StickerLayerType.text ? 'Texto' : 'Imagem';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1527,8 +1526,7 @@ class _InspectorTab extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isActive
               ? theme.colorScheme.primaryContainer
@@ -1550,8 +1548,7 @@ class _InspectorTab extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 13,
-                fontWeight:
-                    isActive ? FontWeight.w700 : FontWeight.w500,
+                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                 color: isActive
                     ? theme.colorScheme.onPrimaryContainer
                     : const Color(0xFF64748B),
@@ -1605,8 +1602,7 @@ class _InspectorSlider extends StatelessWidget {
               ),
             ),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
               decoration: BoxDecoration(
                 color: const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(8),
@@ -1691,8 +1687,7 @@ class _ExportBar extends StatelessWidget {
                           ),
                         )
                       : const Icon(Icons.check_circle_rounded),
-                  label:
-                      Text(isExporting ? 'Gerando...' : 'Aplicar edição'),
+                  label: Text(isExporting ? 'Gerando...' : 'Aplicar edição'),
                 ),
               ),
             ),
@@ -1715,8 +1710,7 @@ class _EditorBackdropPainter extends CustomPainter {
     final darkPaint = Paint()..color = const Color(0xFFE9EEF8);
     for (double y = 0; y < size.height; y += tile) {
       for (double x = 0; x < size.width; x += tile) {
-        final isEven =
-            ((x / tile).floor() + (y / tile).floor()).isEven;
+        final isEven = ((x / tile).floor() + (y / tile).floor()).isEven;
         canvas.drawRect(
           Rect.fromLTWH(x, y, tile, tile),
           isEven ? lightPaint : darkPaint,
@@ -1760,18 +1754,18 @@ class _StickerLayer {
     required Offset offset,
     required double scale,
   }) : this._(
-          id: id,
-          type: _StickerLayerType.text,
-          offset: offset,
-          scaleX: scale,
-          scaleY: scale,
-          rotation: 0,
-          opacity: 1.0,
-          color: color,
-          backgroundColor: backgroundColor,
-          fontSize: fontSize,
-          text: text,
-        );
+         id: id,
+         type: _StickerLayerType.text,
+         offset: offset,
+         scaleX: scale,
+         scaleY: scale,
+         rotation: 0,
+         opacity: 1.0,
+         color: color,
+         backgroundColor: backgroundColor,
+         fontSize: fontSize,
+         text: text,
+       );
 
   const _StickerLayer.image({
     required String id,
@@ -1779,18 +1773,18 @@ class _StickerLayer {
     required Offset offset,
     required double scale,
   }) : this._(
-          id: id,
-          type: _StickerLayerType.image,
-          offset: offset,
-          scaleX: scale,
-          scaleY: scale,
-          rotation: 0,
-          opacity: 1.0,
-          color: Colors.white,
-          backgroundColor: const Color(0x00000000),
-          fontSize: 56,
-          imageBytes: imageBytes,
-        );
+         id: id,
+         type: _StickerLayerType.image,
+         offset: offset,
+         scaleX: scale,
+         scaleY: scale,
+         rotation: 0,
+         opacity: 1.0,
+         color: Colors.white,
+         backgroundColor: const Color(0x00000000),
+         fontSize: 56,
+         imageBytes: imageBytes,
+       );
 
   final String id;
   final _StickerLayerType type;
@@ -1808,19 +1802,19 @@ class _StickerLayer {
   double get scale => (scaleX.abs() + scaleY.abs()) / 2.0;
 
   _StickerLayer duplicateWithId(String newId) => _StickerLayer._(
-        id: newId,
-        type: type,
-        offset: offset,
-        scaleX: scaleX,
-        scaleY: scaleY,
-        rotation: rotation,
-        opacity: opacity,
-        color: color,
-        backgroundColor: backgroundColor,
-        fontSize: fontSize,
-        text: text,
-        imageBytes: imageBytes,
-      );
+    id: newId,
+    type: type,
+    offset: offset,
+    scaleX: scaleX,
+    scaleY: scaleY,
+    rotation: rotation,
+    opacity: opacity,
+    color: color,
+    backgroundColor: backgroundColor,
+    fontSize: fontSize,
+    text: text,
+    imageBytes: imageBytes,
+  );
 
   _StickerLayer copyWith({
     Offset? offset,
@@ -1835,9 +1829,11 @@ class _StickerLayer {
     double? fontSize,
     Uint8List? imageBytes,
   }) {
-    final newScaleX = scaleX ??
+    final newScaleX =
+        scaleX ??
         (scale != null ? scale * (this.scaleX < 0 ? -1 : 1) : this.scaleX);
-    final newScaleY = scaleY ??
+    final newScaleY =
+        scaleY ??
         (scale != null ? scale * (this.scaleY < 0 ? -1 : 1) : this.scaleY);
     return _StickerLayer._(
       id: id,
@@ -1918,8 +1914,7 @@ class _TextLayerDialogState extends State<_TextLayerDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       scrollable: true,
-      title:
-          Text(widget.initial == null ? 'Adicionar texto' : 'Editar texto'),
+      title: Text(widget.initial == null ? 'Adicionar texto' : 'Editar texto'),
       content: SizedBox(
         width: 420,
         child: Column(
@@ -1935,8 +1930,7 @@ class _TextLayerDialogState extends State<_TextLayerDialog> {
               decoration: InputDecoration(
                 labelText: 'Texto da camada',
                 hintText: 'Digite o texto que vai no sticker',
-                errorText:
-                    _canApply ? null : 'Informe um texto para continuar',
+                errorText: _canApply ? null : 'Informe um texto para continuar',
               ),
             ),
             const SizedBox(height: 16),
@@ -1949,8 +1943,7 @@ class _TextLayerDialogState extends State<_TextLayerDialog> {
               onCustom: () async {
                 final picked = await showDialog<Color>(
                   context: context,
-                  builder: (c) =>
-                      _ColorPickerDialog(initial: _selectedColor),
+                  builder: (c) => _ColorPickerDialog(initial: _selectedColor),
                 );
                 if (picked != null) {
                   setState(() => _selectedColor = picked);
@@ -2008,15 +2001,15 @@ class _TextLayerDialogState extends State<_TextLayerDialog> {
         FilledButton(
           onPressed: _canApply
               ? () => Navigator.of(context).pop(
-                    _TextLayerDraft(
-                      text: _controller.text,
-                      color: _selectedColor,
-                      backgroundColor: _hasBackground
-                          ? _selectedBackground
-                          : const Color(0x00000000),
-                      fontSize: _fontSize,
-                    ),
-                  )
+                  _TextLayerDraft(
+                    text: _controller.text,
+                    color: _selectedColor,
+                    backgroundColor: _hasBackground
+                        ? _selectedBackground
+                        : const Color(0x00000000),
+                    fontSize: _fontSize,
+                  ),
+                )
               : null,
           child: const Text('Aplicar'),
         ),
@@ -2180,8 +2173,7 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
               shrinkWrap: true,
               itemCount: _gridColors.length,
               physics: const NeverScrollableScrollPhysics(),
-              gridDelegate:
-                  const SliverGridDelegateWithFixedCrossAxisCount(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 8,
                 mainAxisSpacing: 8,
                 crossAxisSpacing: 8,
