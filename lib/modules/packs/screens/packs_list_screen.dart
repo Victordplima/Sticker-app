@@ -22,11 +22,14 @@ class PacksListScreen extends ConsumerWidget {
         label: const Text('Novo pack'),
       ),
       body: DecoratedBox(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFFCE7D6), Color(0xFFF7F1E8)],
+            colors: [
+              Theme.of(context).colorScheme.surface,
+              const Color(0xFFE8F1FF),
+            ],
           ),
         ),
         child: SafeArea(
@@ -77,7 +80,7 @@ class _PacksListContent extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Monte colecoes prontas para exportar ao WhatsApp com uma base preparada para stickers estaticos e animados.',
+                  'Organize seus packs e acompanhe seus stickers em um unico lugar.',
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
                 const SizedBox(height: AppSpacing.section),
@@ -111,8 +114,7 @@ class _PacksListContent extends ConsumerWidget {
               padding: AppSpacing.pageInsets,
               child: AppEmptyState(
                 title: 'Seu primeiro pack comeca aqui',
-                message:
-                    'Crie uma colecao, depois conectamos a etapa de recorte e exportacao.',
+                message: 'Crie um pack para comecar a organizar seus stickers.',
                 actionLabel: 'Criar pack',
                 onAction: () => context.go('/packs/create'),
               ),
@@ -172,21 +174,48 @@ class _HeroSummary extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF241C17), Color(0xFF574338)],
+          colors: [Color(0xFF0F4FCB), Color(0xFF67A4FF)],
         ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x1A1A5EBA),
+            blurRadius: 28,
+            offset: Offset(0, 14),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Painel criativo',
-            style: theme.textTheme.titleLarge?.copyWith(color: Colors.white),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Resumo',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: Colors.white,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           Text(
-            'A estrutura do MVP ja separa packs, stickers, servicos e widgets compartilhados.',
+            'Visualize rapidamente a quantidade de packs e stickers cadastrados.',
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: const Color(0xFFF3E9DE),
+              color: const Color(0xFFE7F1FF),
             ),
           ),
           const SizedBox(height: 20),
@@ -196,7 +225,6 @@ class _HeroSummary extends StatelessWidget {
             children: [
               _SummaryPill(label: 'Packs', value: '$totalPacks'),
               _SummaryPill(label: 'Stickers', value: '$totalStickers'),
-              const _SummaryPill(label: 'Exportacao', value: 'Android-ready'),
             ],
           ),
         ],
@@ -218,6 +246,7 @@ class _SummaryPill extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -233,7 +262,7 @@ class _SummaryPill extends StatelessWidget {
             label,
             style: Theme.of(
               context,
-            ).textTheme.bodyMedium?.copyWith(color: const Color(0xFFF3E9DE)),
+            ).textTheme.bodyMedium?.copyWith(color: const Color(0xFFE7F1FF)),
           ),
         ],
       ),

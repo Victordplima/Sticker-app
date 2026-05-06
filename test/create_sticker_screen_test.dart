@@ -40,8 +40,11 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Criar sticker'), findsOneWidget);
-    expect(find.text('Novo sticker para Coffee Cats'), findsOneWidget);
+    expect(find.text('Criar sticker'), findsNWidgets(2));
+    expect(
+      find.text('Adicione um novo sticker ao pack Coffee Cats.'),
+      findsOneWidget,
+    );
     expect(find.text('Selecionar da galeria'), findsOneWidget);
 
     await tester.scrollUntilVisible(

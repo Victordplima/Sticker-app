@@ -12,6 +12,7 @@ class StickerPreviewTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final primaryEmoji = EmojiHelper.primaryOrFallback(sticker.emojis);
     final previewFile = File(sticker.filePath);
     final hasPreview = previewFile.existsSync();
@@ -19,8 +20,11 @@ class StickerPreviewTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
+        ),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -30,20 +34,34 @@ class StickerPreviewTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               child: SizedBox.expand(
                 child: ColoredBox(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  color: theme.colorScheme.surfaceContainerHighest,
                   child: hasPreview
                       ? Image.file(previewFile, fit: BoxFit.cover)
-                      : const Icon(Icons.sticky_note_2_outlined, size: 28),
+                      : Icon(
+                          Icons.sticky_note_2_outlined,
+                          size: 28,
+                          color: theme.colorScheme.primary,
+                        ),
                 ),
               ),
             ),
           ),
           const SizedBox(height: 10),
-          Text(primaryEmoji, style: Theme.of(context).textTheme.headlineMedium),
+          Text(primaryEmoji, style: theme.textTheme.headlineMedium),
           const SizedBox(height: 8),
-          Text(
-            sticker.isAnimated ? 'Animado' : 'Estatico',
-            style: Theme.of(context).textTheme.bodySmall,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              sticker.isAnimated ? 'Animado' : 'Estatico',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onPrimaryContainer,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),

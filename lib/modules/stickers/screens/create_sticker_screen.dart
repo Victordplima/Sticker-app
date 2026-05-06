@@ -1,6 +1,5 @@
 import 'dart:typed_data';
 
-import 'package:crop_your_image/crop_your_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -9,6 +8,7 @@ import '../../../shared/helpers/emoji_helper.dart';
 import '../../packs/services/packs_controller.dart';
 import '../components/sticker_preview_tile.dart';
 import '../models/sticker.dart';
+import 'sticker_editor_screen.dart';
 import '../services/sticker_creation_service.dart';
 
 class CreateStickerScreen extends ConsumerStatefulWidget {
@@ -43,74 +43,130 @@ class _CreateStickerScreenState extends ConsumerState<CreateStickerScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Criar sticker')),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            Text(
-              'Novo sticker para ${pack?.name ?? 'pack'}',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Selecione uma imagem da galeria, recorte em proporcao 1:1 e gere automaticamente o arquivo final em WEBP 512x512.',
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            const SizedBox(height: 24),
-            _SelectionCard(
-              selectedImageBytes: _selectedImageBytes,
-              selectedImageName: _selectedImageName,
-              isBusy: _isPicking || _isSaving,
-              onPickImage: _pickAndCropImage,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _emojiController,
-              decoration: const InputDecoration(
-                labelText: 'Emojis associados',
-                hintText: 'Ex.: 😂 🔥 ou 😂,🔥',
-                helperText: 'O primeiro emoji vira o principal do preview.',
-              ),
-              onChanged: (_) => setState(() {}),
-              textInputAction: TextInputAction.done,
-            ),
-            const SizedBox(height: 16),
-            _PipelineInfo(imageName: _selectedImageName),
-            const SizedBox(height: 24),
-            if (_previewSticker != null) ...[
-              Text(
-                'Preview do sticker gerado',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 180,
-                child: StickerPreviewTile(sticker: _previewSticker!),
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Theme.of(context).colorScheme.surface,
+              const Color(0xFFEAF2FF),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(30),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF0F4FCB), Color(0xFF67A4FF)],
+                  ),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x1A1A5EBA),
+                      blurRadius: 28,
+                      offset: Offset(0, 14),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: const Icon(
+                        Icons.auto_fix_high_rounded,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Criar sticker',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.headlineMedium?.copyWith(color: Colors.white),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      pack == null
+                          ? 'Selecione uma imagem, edite a arte e finalize o sticker.'
+                          : 'Adicione um novo sticker ao pack ${pack.name}.',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: const Color(0xFFE7F1FF),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 24),
-            ],
-            SizedBox(
-              width: double.infinity,
-              child: SizedBox(
-                height: 54,
-                child: ElevatedButton.icon(
-                  onPressed: _canSave ? _saveSticker : null,
-                  icon: _isSaving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.auto_fix_high_rounded),
-                  label: Text(
-                    _isSaving
-                        ? 'Gerando sticker...'
-                        : 'Gerar e adicionar ao pack',
+              _SelectionCard(
+                selectedImageBytes: _selectedImageBytes,
+                selectedImageName: _selectedImageName,
+                isBusy: _isPicking || _isSaving,
+                onPickImage: _pickAndEditImage,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _emojiController,
+                decoration: const InputDecoration(
+                  labelText: 'Emojis associados',
+                  hintText: 'Ex.: 😂 🔥 ou 😂,🔥',
+                  helperText:
+                      'Use pelo menos um emoji para identificar o sticker.',
+                ),
+                onChanged: (_) => setState(() {}),
+                textInputAction: TextInputAction.done,
+              ),
+              const SizedBox(height: 16),
+              _PipelineInfo(imageName: _selectedImageName),
+              const SizedBox(height: 24),
+              if (_previewSticker != null) ...[
+                Text(
+                  'Preview do sticker gerado',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 180,
+                  child: StickerPreviewTile(sticker: _previewSticker!),
+                ),
+                const SizedBox(height: 24),
+              ],
+              SizedBox(
+                width: double.infinity,
+                child: SizedBox(
+                  height: 54,
+                  child: ElevatedButton.icon(
+                    onPressed: _canSave ? _saveSticker : null,
+                    icon: _isSaving
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.auto_fix_high_rounded),
+                    label: Text(
+                      _isSaving
+                          ? 'Gerando sticker...'
+                          : 'Gerar e adicionar ao pack',
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -130,7 +186,7 @@ class _CreateStickerScreenState extends ConsumerState<CreateStickerScreen> {
     return EmojiHelper.sanitize(raw);
   }
 
-  Future<void> _pickAndCropImage() async {
+  Future<void> _pickAndEditImage() async {
     if (_isPicking) {
       return;
     }
@@ -158,21 +214,21 @@ class _CreateStickerScreenState extends ConsumerState<CreateStickerScreen> {
         return;
       }
 
-      final croppedBytes = await Navigator.of(context).push<Uint8List>(
+      final editedBytes = await Navigator.of(context).push<Uint8List>(
         MaterialPageRoute(
-          builder: (context) => StickerCropScreen(
+          builder: (context) => StickerEditorScreen(
             initialBytes: sourceBytes,
             imageName: source.name,
           ),
         ),
       );
 
-      if (croppedBytes == null || !mounted) {
+      if (editedBytes == null || !mounted) {
         return;
       }
 
       setState(() {
-        _selectedImageBytes = croppedBytes;
+        _selectedImageBytes = editedBytes;
         _selectedImageName = source.name;
         _previewSticker = null;
       });
@@ -278,21 +334,29 @@ class _SelectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final previewBytes = selectedImageBytes;
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0F1A4E93),
+            blurRadius: 24,
+            offset: Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Imagem de origem',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text('Imagem de origem', style: theme.textTheme.titleLarge),
           const SizedBox(height: 12),
           AspectRatio(
             aspectRatio: 1,
@@ -300,13 +364,14 @@ class _SelectionCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  color: theme.colorScheme.surfaceContainerHighest,
                 ),
                 child: previewBytes == null
-                    ? const Center(
+                    ? Center(
                         child: Icon(
                           Icons.add_photo_alternate_outlined,
                           size: 54,
+                          color: theme.colorScheme.primary,
                         ),
                       )
                     : Image.memory(previewBytes, fit: BoxFit.cover),
@@ -315,10 +380,7 @@ class _SelectionCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           if (selectedImageName != null) ...[
-            Text(
-              selectedImageName!,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            Text(selectedImageName!, style: theme.textTheme.bodySmall),
             const SizedBox(height: 12),
           ],
           OutlinedButton.icon(
@@ -341,163 +403,41 @@ class _PipelineInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final hasImage = imageName != null;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Pipeline aplicado',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text('Status', style: theme.textTheme.titleLarge),
           const SizedBox(height: 12),
-          const _StepRow(text: '1. Galeria com image_picker'),
-          const _StepRow(text: '2. Crop quadrado com crop_your_image'),
-          const _StepRow(text: '3. Resize em canvas 512x512 com image'),
-          const _StepRow(
-            text: '4. Compressao final WEBP com flutter_image_compress',
-          ),
+          const _StepRow(text: 'Selecione uma imagem da galeria'),
+          const _StepRow(text: 'Edite a arte com camadas, texto e imagens'),
+          const _StepRow(text: 'Ajuste tamanho e posicionamento final'),
+          const _StepRow(text: 'Informe os emojis'),
           if (hasImage) ...[
             const SizedBox(height: 12),
             Text(
-              'Arquivo pronto para processamento: $imageName',
-              style: Theme.of(context).textTheme.bodyMedium,
+              'Imagem selecionada: $imageName',
+              style: theme.textTheme.bodyMedium,
+            ),
+          ] else ...[
+            Text(
+              'Escolha uma imagem para abrir o editor do sticker.',
+              style: theme.textTheme.bodyMedium,
             ),
           ],
         ],
-      ),
-    );
-  }
-}
-
-class StickerCropScreen extends StatefulWidget {
-  const StickerCropScreen({
-    required this.initialBytes,
-    required this.imageName,
-    super.key,
-  });
-
-  final Uint8List initialBytes;
-  final String imageName;
-
-  @override
-  State<StickerCropScreen> createState() => _StickerCropScreenState();
-}
-
-class _StickerCropScreenState extends State<StickerCropScreen> {
-  final CropController _cropController = CropController();
-  bool _isCropping = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Recortar sticker')),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Ajuste o enquadramento em 1:1',
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Arraste e redimensione a area para definir exatamente o sticker final.',
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(28),
-                  child: ColoredBox(
-                    color: const Color(0xFF241C17),
-                    child: Crop(
-                      controller: _cropController,
-                      image: widget.initialBytes,
-                      aspectRatio: 1,
-                      fixCropRect: true,
-                      radius: 24,
-                      maskColor: Colors.black.withValues(alpha: 0.48),
-                      baseColor: const Color(0xFF241C17),
-                      onCropped: (result) {
-                        switch (result) {
-                          case CropSuccess(:final croppedImage):
-                            Navigator.of(context).pop(croppedImage);
-                          case CropFailure(:final cause):
-                            setState(() {
-                              _isCropping = false;
-                            });
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Falha ao recortar a imagem: $cause',
-                                ),
-                              ),
-                            );
-                        }
-                      },
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _isCropping
-                          ? null
-                          : () => Navigator.of(context).pop(),
-                      child: const Text('Cancelar'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: SizedBox(
-                      height: 54,
-                      child: ElevatedButton(
-                        onPressed: _isCropping
-                            ? null
-                            : () {
-                                setState(() {
-                                  _isCropping = true;
-                                });
-                                _cropController.crop();
-                              },
-                        child: _isCropping
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text('Aplicar recorte'),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

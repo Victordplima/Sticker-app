@@ -55,18 +55,29 @@ class PackCard extends StatelessWidget {
                         child: Text(
                           '${pack.stickerCount} stickers',
                           style: theme.textTheme.labelLarge?.copyWith(
-                            color: const Color(0xFF1E1612),
+                            color: theme.colorScheme.primary,
                           ),
                         ),
                       ),
                     ),
-                    const Positioned(
+                    Positioned(
                       right: 16,
                       bottom: 16,
-                      child: Icon(
-                        Icons.photo_library_rounded,
-                        size: 44,
-                        color: Colors.white,
+                      child: Container(
+                        width: 54,
+                        height: 54,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.photo_library_rounded,
+                          size: 28,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ],
@@ -119,10 +130,10 @@ class PackCard extends StatelessWidget {
 
   List<Color> _paletteFor(String seed) {
     const palettes = [
-      [Color(0xFFFF8A5B), Color(0xFFFFD166)],
-      [Color(0xFF2A9D8F), Color(0xFF7FD1B9)],
-      [Color(0xFF457B9D), Color(0xFFA8DADC)],
-      [Color(0xFFB56576), Color(0xFFEBC3DB)],
+      [Color(0xFF1A66E8), Color(0xFF6AAEFF)],
+      [Color(0xFF0F86CF), Color(0xFF71D4FF)],
+      [Color(0xFF3854D8), Color(0xFF93B2FF)],
+      [Color(0xFF2F7DFF), Color(0xFFA6CBFF)],
     ];
 
     return palettes[seed.hashCode.abs() % palettes.length];
