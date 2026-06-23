@@ -20,18 +20,58 @@ class PackCard extends StatelessWidget {
     final colors = _paletteFor(pack.id);
 
     return Card(
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+      ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(8),
         onTap: onOpen,
         child: Padding(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          pack.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleLarge,
+                        ),
+                        if (pack.author.trim().isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'por ${pack.author}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Remover pack',
+                    onPressed: onDelete,
+                    icon: const Icon(Icons.delete_outline_rounded),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
               Container(
-                height: 132,
+                height: 112,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(22),
+                  borderRadius: BorderRadius.circular(8),
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -41,15 +81,15 @@ class PackCard extends StatelessWidget {
                 child: Stack(
                   children: [
                     Positioned(
-                      top: 14,
-                      left: 14,
+                      top: 12,
+                      left: 12,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
-                          vertical: 8,
+                          vertical: 7,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.85),
+                          color: Colors.white.withValues(alpha: 0.9),
                           borderRadius: BorderRadius.circular(99),
                         ),
                         child: Text(
@@ -61,14 +101,14 @@ class PackCard extends StatelessWidget {
                       ),
                     ),
                     Positioned(
-                      right: 16,
-                      bottom: 16,
+                      right: 12,
+                      bottom: 12,
                       child: Container(
-                        width: 54,
-                        height: 54,
+                        width: 48,
+                        height: 48,
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(18),
+                          borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: Colors.white.withValues(alpha: 0.2),
                           ),
@@ -83,31 +123,7 @@ class PackCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(pack.name, style: theme.textTheme.titleLarge),
-                        const SizedBox(height: 4),
-                        Text(
-                          'por ${pack.author}',
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Remover pack',
-                    onPressed: onDelete,
-                    icon: const Icon(Icons.delete_outline_rounded),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -130,10 +146,10 @@ class PackCard extends StatelessWidget {
 
   List<Color> _paletteFor(String seed) {
     const palettes = [
-      [Color(0xFF1A66E8), Color(0xFF6AAEFF)],
-      [Color(0xFF0F86CF), Color(0xFF71D4FF)],
-      [Color(0xFF3854D8), Color(0xFF93B2FF)],
-      [Color(0xFF2F7DFF), Color(0xFFA6CBFF)],
+      [Color(0xFF184E77), Color(0xFF35A7A0)],
+      [Color(0xFFFF6B6B), Color(0xFFFFB703)],
+      [Color(0xFF2F4858), Color(0xFF86BBD8)],
+      [Color(0xFF6D597A), Color(0xFFE56B6F)],
     ];
 
     return palettes[seed.hashCode.abs() % palettes.length];

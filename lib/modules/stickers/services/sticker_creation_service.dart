@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
+import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -35,6 +37,29 @@ class StickerCreationPlan {
 class StickerCreationService {
   static const int targetDimension = 512;
   static const String outputFormat = 'webp';
+  static const int maxStaticStickerBytes = 100 * 1024;
+  static const int maxAnimatedStickerBytes = 500 * 1024;
+
+  static const List<String> _animatedSourceExtensions = [
+    '.gif',
+    '.mp4',
+    '.mov',
+    '.m4v',
+    '.webm',
+    '.3gp',
+    '.avi',
+    '.mkv',
+  ];
+
+  static const List<_AnimatedEncodingProfile> _animatedProfiles = [
+    _AnimatedEncodingProfile(fps: 12, durationSeconds: 6),
+    _AnimatedEncodingProfile(fps: 10, durationSeconds: 6),
+    _AnimatedEncodingProfile(fps: 8, durationSeconds: 5),
+    _AnimatedEncodingProfile(fps: 6, durationSeconds: 4),
+  ];
+
+  static const List<int> _animatedQualities = [70, 60, 50, 42, 34, 26, 18];
+  static const List<String> _animatedEncoders = ['libwebp_anim', 'libwebp'];
 
   StickerCreationService({required LocalStoragePathService storagePathService})
     : _storagePathService = storagePathService;
@@ -47,7 +72,13 @@ class StickerCreationService {
     return normalized.endsWith('.png') ||
         normalized.endsWith('.jpg') ||
         normalized.endsWith('.jpeg') ||
-        normalized.endsWith('.webp');
+        normalized.endsWith('.webp') ||
+        supportsAnimatedSource(sourcePath);
+  }
+
+  bool supportsAnimatedSource(String sourcePath) {
+    final normalized = sourcePath.toLowerCase();
+    return _animatedSourceExtensions.any(normalized.endsWith);
   }
 
   StickerCreationPlan buildPlan(
@@ -92,7 +123,6 @@ class StickerCreationService {
 
     // WhatsApp limits static stickers to 100 KB. Start at quality 80 and
     // reduce if the output exceeds the budget.
-    const int maxStickerBytes = 100 * 1024;
     Uint8List webpBytes = Uint8List(0);
     int quality = 80;
 
@@ -115,7 +145,8 @@ class StickerCreationService {
         }
       }
 
-      if (webpBytes.isNotEmpty && webpBytes.lengthInBytes <= maxStickerBytes) {
+      if (webpBytes.isNotEmpty &&
+          webpBytes.lengthInBytes <= maxStaticStickerBytes) {
         break;
       }
 
@@ -149,6 +180,159 @@ class StickerCreationService {
     return Sticker(id: stickerId, filePath: outputFile.path, emojis: emojis);
   }
 
+  Future<Sticker> createAnimatedSticker({
+    required String packId,
+    required String sourcePath,
+    String? sourceName,
+    required List<String> emojis,
+  }) async {
+    if (kIsWeb) {
+      throw const StickerCreationException(
+        'Salvar stickers animados localmente para exportacao ao WhatsApp requer Android, iOS ou macOS.',
+      );
+    }
+
+    if (!supportsAnimatedSource(sourcePath) &&
+        !supportsAnimatedSource(sourceName ?? '')) {
+      throw const StickerCreationException(
+        'Selecione um GIF ou video para gerar sticker animado.',
+      );
+    }
+
+    final sourceFile = File(sourcePath);
+    if (!await sourceFile.exists()) {
+      throw StickerCreationException(
+        'Arquivo de origem nao encontrado: $sourcePath',
+      );
+    }
+
+    final packDirectory = await _storagePathService.getPackStickersDirectory(
+      packId,
+    );
+
+    final stickerId = _uuid.v4();
+    final outputFile = File(
+      '${packDirectory.path}${Platform.pathSeparator}$stickerId.webp',
+    );
+
+    await _convertAnimatedSourceToWebp(
+      sourcePath: sourceFile.path,
+      outputPath: outputFile.path,
+    );
+
+    final writtenLength = await outputFile.length();
+    if (writtenLength == 0) {
+      throw const StickerCreationException(
+        'O sticker animado foi gerado com 0 bytes. Tente outro arquivo.',
+      );
+    }
+
+    if (writtenLength > maxAnimatedStickerBytes) {
+      throw StickerCreationException(
+        'O sticker animado ficou acima de 500 KB (${(writtenLength / 1024).ceil()} KB). Tente um video mais curto ou simples.',
+      );
+    }
+
+    return Sticker(
+      id: stickerId,
+      filePath: outputFile.path,
+      emojis: emojis,
+      isAnimated: true,
+    );
+  }
+
+  Future<void> _convertAnimatedSourceToWebp({
+    required String sourcePath,
+    required String outputPath,
+  }) async {
+    String? lastError;
+
+    for (final profile in _animatedProfiles) {
+      for (final quality in _animatedQualities) {
+        for (final encoder in _animatedEncoders) {
+          final outputFile = File(outputPath);
+          if (await outputFile.exists()) {
+            await outputFile.delete();
+          }
+
+          final session = await FFmpegKit.executeWithArguments(
+            _buildAnimatedWebpArguments(
+              sourcePath: sourcePath,
+              outputPath: outputPath,
+              profile: profile,
+              quality: quality,
+              encoder: encoder,
+            ),
+          );
+          final returnCode = await session.getReturnCode();
+
+          if (!ReturnCode.isSuccess(returnCode)) {
+            final output = await session.getOutput();
+            lastError = output?.trim().isNotEmpty == true
+                ? output!.trim()
+                : 'FFmpeg retornou codigo $returnCode.';
+            continue;
+          }
+
+          if (!await outputFile.exists()) {
+            lastError = 'FFmpeg finalizou sem criar o arquivo WEBP.';
+            continue;
+          }
+
+          final outputLength = await outputFile.length();
+          if (outputLength > 0 && outputLength <= maxAnimatedStickerBytes) {
+            return;
+          }
+
+          lastError =
+              'Saida com ${(outputLength / 1024).ceil()} KB, acima do limite de 500 KB.';
+        }
+      }
+    }
+
+    throw StickerCreationException(
+      'Falha ao converter GIF/video para sticker animado compativel com WhatsApp. ${lastError ?? ''}'.trim(),
+    );
+  }
+
+  List<String> _buildAnimatedWebpArguments({
+    required String sourcePath,
+    required String outputPath,
+    required _AnimatedEncodingProfile profile,
+    required int quality,
+    required String encoder,
+  }) {
+    final filter =
+        'fps=${profile.fps},'
+        'scale=$targetDimension:$targetDimension:force_original_aspect_ratio=decrease,'
+        'pad=$targetDimension:$targetDimension:(ow-iw)/2:(oh-ih)/2:color=0x00000000,'
+        'format=rgba';
+
+    return [
+      '-y',
+      '-i',
+      sourcePath,
+      '-t',
+      profile.durationSeconds.toString(),
+      '-an',
+      '-vf',
+      filter,
+      '-loop',
+      '0',
+      '-c:v',
+      encoder,
+      '-preset',
+      'default',
+      '-lossless',
+      '0',
+      '-compression_level',
+      '6',
+      '-q:v',
+      quality.toString(),
+      outputPath,
+    ];
+  }
+
   img.Image _prepareImage(img.Image source) {
     final resized = _resizePreservingAspectRatio(source);
     final canvas = img.Image(
@@ -177,6 +361,16 @@ class StickerCreationService {
 
     return img.copyResize(source, height: targetDimension);
   }
+}
+
+class _AnimatedEncodingProfile {
+  const _AnimatedEncodingProfile({
+    required this.fps,
+    required this.durationSeconds,
+  });
+
+  final int fps;
+  final int durationSeconds;
 }
 
 class StickerCreationException implements Exception {

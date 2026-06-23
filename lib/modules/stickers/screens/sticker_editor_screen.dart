@@ -130,91 +130,64 @@ class _StickerEditorScreenState extends State<StickerEditorScreen> {
       ),
       body: Column(
         children: [
+          // ── Canvas area (fixed, no scroll) ──
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Column(
-                children: [
-                  RepaintBoundary(
-                    key: _canvasKey,
-                    child: _EditorCanvas(
-                      baseImageBytes: widget.initialBytes,
-                      backgroundOffset: _backgroundOffset,
-                      backgroundScale: _backgroundScale,
-                      backgroundRotation: _backgroundRotation,
-                      backgroundFlipX: _backgroundFlipX,
-                      backgroundFlipY: _backgroundFlipY,
-                      backgroundKey: _backgroundKey,
-                      layers: _layers,
-                      selectedLayerId: _selectedLayerId,
-                      showSelection: !_isExporting,
-                      onBackgroundScaleStart: _onBackgroundScaleStart,
-                      onBackgroundScaleUpdate: _onBackgroundScaleUpdate,
-                      onBackgroundHandleStart: _onBackgroundHandleStart,
-                      onBackgroundHandleUpdate: _onBackgroundHandleUpdate,
-                      onBackgroundHandleEnd: _onBackgroundHandleEnd,
-                      onTapCanvas: _deselectLayer,
-                      onLayerTap: _selectLayer,
-                      onLayerScaleStart: _onLayerScaleStart,
-                      onLayerScaleUpdate: _onLayerScaleUpdate,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _EditorToolbar(
-                    isBusy: _isExporting || _isPickingOverlay,
-                    hasSelectedLayer: selectedLayer != null,
-                    hasSelectedTextLayer:
-                        selectedLayer?.type == _StickerLayerType.text,
-                    canBringForward:
-                        selectedLayer != null &&
-                        _layers.indexOf(selectedLayer) < _layers.length - 1,
-                    canSendBackward:
-                        selectedLayer != null &&
-                        _layers.indexOf(selectedLayer) > 0,
-                    onAddText: _addTextLayer,
-                    onEditText: _editSelectedTextLayer,
-                    onAddImage: _addOverlayImage,
-                    onDuplicateLayer: _duplicateSelectedLayer,
-                    onRemoveLayer: _removeSelectedLayer,
-                    onFlipHorizontal: _flipSelectedLayerHorizontal,
-                    onFlipVertical: _flipSelectedLayerVertical,
-                    onRotateCCW: _rotateSelectedLayerCCW,
-                    onRotateCW: _rotateSelectedLayerCW,
-                    onBringForward: _bringLayerForward,
-                    onSendBackward: _sendLayerBackward,
-                    onResetBackground: _resetBackground,
-                    onRotateBackgroundCCW: _rotateBackgroundCCW,
-                    onRotateBackgroundCW: _rotateBackgroundCW,
-                    onFlipBackgroundHorizontal: _flipBackgroundHorizontal,
-                    onFlipBackgroundVertical: _flipBackgroundVertical,
-                  ),
-                  const SizedBox(height: 12),
-                  _EditorInspector(
-                    tab: _inspectorTab,
-                    onTabChanged: (t) => setState(() => _inspectorTab = t),
-                    isLayerSelected: selectedLayer != null,
-                    layerType: selectedLayer?.type,
-                    layerScaleValue: selectedLayer?.scale ?? 1.0,
-                    layerRotationValue: selectedLayer?.rotation ?? 0.0,
-                    layerOpacityValue: selectedLayer?.opacity ?? 1.0,
-                    onLayerScaleChanged: selectedLayer != null
-                        ? _updateLayerScale
-                        : null,
-                    onLayerRotationChanged: selectedLayer != null
-                        ? _updateLayerRotation
-                        : null,
-                    onLayerOpacityChanged: selectedLayer != null
-                        ? _updateLayerOpacity
-                        : null,
-                    bgScaleValue: _backgroundScale,
-                    bgRotationValue: _backgroundRotation,
-                    onBgScaleChanged: _updateBgScale,
-                    onBgRotationChanged: _updateBgRotation,
-                  ),
-                  const SizedBox(height: 8),
-                ],
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+              child: _EditorCanvas(
+                canvasKey: _canvasKey,
+                baseImageBytes: widget.initialBytes,
+                backgroundOffset: _backgroundOffset,
+                backgroundScale: _backgroundScale,
+                backgroundRotation: _backgroundRotation,
+                backgroundFlipX: _backgroundFlipX,
+                backgroundFlipY: _backgroundFlipY,
+                backgroundKey: _backgroundKey,
+                layers: _layers,
+                selectedLayerId: _selectedLayerId,
+                showSelection: !_isExporting,
+                onBackgroundScaleStart: _onBackgroundScaleStart,
+                onBackgroundScaleUpdate: _onBackgroundScaleUpdate,
+                onBackgroundHandleStart: _onBackgroundHandleStart,
+                onBackgroundHandleUpdate: _onBackgroundHandleUpdate,
+                onBackgroundHandleEnd: _onBackgroundHandleEnd,
+                onTapCanvas: _deselectLayer,
+                onLayerTap: _selectLayer,
+                onLayerScaleStart: _onLayerScaleStart,
+                onLayerScaleUpdate: _onLayerScaleUpdate,
               ),
             ),
+          ),
+          // ── Bottom tools panel (compact, scrollable) ──
+          _BottomToolsPanel(
+            inspectorTab: _inspectorTab,
+            onInspectorTabChanged: (t) => setState(() => _inspectorTab = t),
+            isBusy: _isExporting || _isPickingOverlay,
+            selectedLayer: selectedLayer,
+            layers: _layers,
+            onAddText: _addTextLayer,
+            onEditText: _editSelectedTextLayer,
+            onAddImage: _addOverlayImage,
+            onDuplicateLayer: _duplicateSelectedLayer,
+            onRemoveLayer: _removeSelectedLayer,
+            onFlipHorizontal: _flipSelectedLayerHorizontal,
+            onFlipVertical: _flipSelectedLayerVertical,
+            onRotateCCW: _rotateSelectedLayerCCW,
+            onRotateCW: _rotateSelectedLayerCW,
+            onBringForward: _bringLayerForward,
+            onSendBackward: _sendLayerBackward,
+            onResetBackground: _resetBackground,
+            onRotateBackgroundCCW: _rotateBackgroundCCW,
+            onRotateBackgroundCW: _rotateBackgroundCW,
+            onFlipBackgroundHorizontal: _flipBackgroundHorizontal,
+            onFlipBackgroundVertical: _flipBackgroundVertical,
+            onLayerScaleChanged: selectedLayer != null ? _updateLayerScale : null,
+            onLayerRotationChanged: selectedLayer != null ? _updateLayerRotation : null,
+            onLayerOpacityChanged: selectedLayer != null ? _updateLayerOpacity : null,
+            bgScaleValue: _backgroundScale,
+            bgRotationValue: _backgroundRotation,
+            onBgScaleChanged: _updateBgScale,
+            onBgRotationChanged: _updateBgRotation,
           ),
           _ExportBar(
             isExporting: _isExporting,
@@ -690,6 +663,7 @@ class _UndoRedoButton extends StatelessWidget {
 
 class _EditorCanvas extends StatelessWidget {
   const _EditorCanvas({
+    required this.canvasKey,
     required this.baseImageBytes,
     required this.backgroundOffset,
     required this.backgroundScale,
@@ -711,6 +685,7 @@ class _EditorCanvas extends StatelessWidget {
     required this.onLayerScaleUpdate,
   });
 
+  final GlobalKey canvasKey;
   final Uint8List baseImageBytes;
   final Offset backgroundOffset;
   final double backgroundScale;
@@ -733,12 +708,10 @@ class _EditorCanvas extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Outer decoration is purely visual — NOT inside RepaintBoundary
     return Container(
-      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: const Color(0xFFD7DFED)),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: const [
           BoxShadow(
             color: Color(0x1418457A),
@@ -747,94 +720,121 @@ class _EditorCanvas extends StatelessWidget {
           ),
         ],
       ),
-      child: AspectRatio(
-        aspectRatio: 1,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(22),
-          child: GestureDetector(
-            onTap: onTapCanvas,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                CustomPaint(painter: _EditorBackdropPainter()),
-                GestureDetector(
-                  onScaleStart: onBackgroundScaleStart,
-                  onScaleUpdate: onBackgroundScaleUpdate,
-                  child: Padding(
-                    padding: const EdgeInsets.all(18),
-                    child: Center(
-                      child: Transform.translate(
-                        offset: backgroundOffset,
-                        child: Transform(
-                          transform: vm.Matrix4.identity()
-                            ..rotateZ(backgroundRotation),
-                          alignment: Alignment.center,
-                          child: Transform.scale(
-                            scaleX:
-                                (backgroundFlipX ? -1.0 : 1.0) *
-                                backgroundScale,
-                            scaleY:
-                                (backgroundFlipY ? -1.0 : 1.0) *
-                                backgroundScale,
-                            alignment: Alignment.center,
-                            child: Stack(
-                              key: backgroundKey,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: AspectRatio(
+          aspectRatio: 1,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Checkerboard is preview-only and must stay outside RepaintBoundary.
+              CustomPaint(painter: _EditorBackdropPainter()),
+              // RepaintBoundary exports image + layers with a transparent background.
+              RepaintBoundary(
+                key: canvasKey,
+                child: GestureDetector(
+                  onTap: onTapCanvas,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      GestureDetector(
+                        onScaleStart: onBackgroundScaleStart,
+                        onScaleUpdate: onBackgroundScaleUpdate,
+                        child: Center(
+                          child: Transform.translate(
+                            offset: backgroundOffset,
+                            child: Transform(
+                              transform: vm.Matrix4.identity()
+                                ..rotateZ(backgroundRotation),
                               alignment: Alignment.center,
-                              children: [
-                                Image.memory(
-                                  baseImageBytes,
-                                  fit: BoxFit.contain,
-                                  filterQuality: FilterQuality.high,
-                                  gaplessPlayback: true,
+                              child: Transform.scale(
+                                scaleX:
+                                    (backgroundFlipX ? -1.0 : 1.0) *
+                                    backgroundScale,
+                                scaleY:
+                                    (backgroundFlipY ? -1.0 : 1.0) *
+                                    backgroundScale,
+                                alignment: Alignment.center,
+                                child: Stack(
+                                  key: backgroundKey,
+                                  alignment: Alignment.center,
+                                  children: [
+                                    Image.memory(
+                                      baseImageBytes,
+                                      fit: BoxFit.contain,
+                                      filterQuality: FilterQuality.high,
+                                      gaplessPlayback: true,
+                                    ),
+                                    // Rotate handle (top center)
+                                    if (showSelection)
+                                      Align(
+                                        alignment: Alignment.topCenter,
+                                        child: _CanvasHandle(
+                                          icon: Icons.rotate_right,
+                                          color: const Color(0xFF0F4FCB),
+                                          onPanStart: (d) =>
+                                              onBackgroundHandleStart(
+                                                d,
+                                                'rotate',
+                                              ),
+                                          onPanUpdate: (d) =>
+                                              onBackgroundHandleUpdate(
+                                                d,
+                                                'rotate',
+                                              ),
+                                          onPanEnd: (d) =>
+                                              onBackgroundHandleEnd(
+                                                d,
+                                                'rotate',
+                                              ),
+                                        ),
+                                      ),
+                                    // Scale handle (bottom right)
+                                    if (showSelection)
+                                      Align(
+                                        alignment: Alignment.bottomRight,
+                                        child: _CanvasHandle(
+                                          icon: Icons.open_in_full,
+                                          color: const Color(0xFF2A9D8F),
+                                          onPanStart: (d) =>
+                                              onBackgroundHandleStart(
+                                                d,
+                                                'scale',
+                                              ),
+                                          onPanUpdate: (d) =>
+                                              onBackgroundHandleUpdate(
+                                                d,
+                                                'scale',
+                                              ),
+                                          onPanEnd: (d) =>
+                                              onBackgroundHandleEnd(
+                                                d,
+                                                'scale',
+                                              ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
-                                // Rotate handle (top center)
-                                if (showSelection)
-                                  Align(
-                                    alignment: Alignment.topCenter,
-                                    child: _CanvasHandle(
-                                      icon: Icons.rotate_right,
-                                      color: const Color(0xFF0F4FCB),
-                                      onPanStart: (d) =>
-                                          onBackgroundHandleStart(d, 'rotate'),
-                                      onPanUpdate: (d) =>
-                                          onBackgroundHandleUpdate(d, 'rotate'),
-                                      onPanEnd: (d) =>
-                                          onBackgroundHandleEnd(d, 'rotate'),
-                                    ),
-                                  ),
-                                // Scale handle (bottom right)
-                                if (showSelection)
-                                  Align(
-                                    alignment: Alignment.bottomRight,
-                                    child: _CanvasHandle(
-                                      icon: Icons.open_in_full,
-                                      color: const Color(0xFF2A9D8F),
-                                      onPanStart: (d) =>
-                                          onBackgroundHandleStart(d, 'scale'),
-                                      onPanUpdate: (d) =>
-                                          onBackgroundHandleUpdate(d, 'scale'),
-                                      onPanEnd: (d) =>
-                                          onBackgroundHandleEnd(d, 'scale'),
-                                    ),
-                                  ),
-                              ],
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
+                      for (final layer in layers)
+                        _LayerWidget(
+                          layer: layer,
+                          isSelected:
+                              showSelection && selectedLayerId == layer.id,
+                          onTap: () => onLayerTap(layer.id),
+                          onScaleStart: (d) => onLayerScaleStart(layer.id, d),
+                          onScaleUpdate: (d) =>
+                              onLayerScaleUpdate(layer.id, d),
+                        ),
+                    ],
                   ),
                 ),
-                for (final layer in layers)
-                  _LayerWidget(
-                    layer: layer,
-                    isSelected: showSelection && selectedLayerId == layer.id,
-                    onTap: () => onLayerTap(layer.id),
-                    onScaleStart: (d) => onLayerScaleStart(layer.id, d),
-                    onScaleUpdate: (d) => onLayerScaleUpdate(layer.id, d),
-                  ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1004,7 +1004,322 @@ class _ImageLayerPreview extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Toolbar
+// Bottom tools panel — compact, scrollable, replaces old toolbar+inspector
+// ═══════════════════════════════════════════════════════════════════════════
+
+class _BottomToolsPanel extends StatelessWidget {
+  const _BottomToolsPanel({
+    required this.inspectorTab,
+    required this.onInspectorTabChanged,
+    required this.isBusy,
+    required this.selectedLayer,
+    required this.layers,
+    required this.onAddText,
+    required this.onEditText,
+    required this.onAddImage,
+    required this.onDuplicateLayer,
+    required this.onRemoveLayer,
+    required this.onFlipHorizontal,
+    required this.onFlipVertical,
+    required this.onRotateCCW,
+    required this.onRotateCW,
+    required this.onBringForward,
+    required this.onSendBackward,
+    required this.onResetBackground,
+    required this.onRotateBackgroundCCW,
+    required this.onRotateBackgroundCW,
+    required this.onFlipBackgroundHorizontal,
+    required this.onFlipBackgroundVertical,
+    required this.onLayerScaleChanged,
+    required this.onLayerRotationChanged,
+    required this.onLayerOpacityChanged,
+    required this.bgScaleValue,
+    required this.bgRotationValue,
+    required this.onBgScaleChanged,
+    required this.onBgRotationChanged,
+  });
+
+  final int inspectorTab;
+  final ValueChanged<int> onInspectorTabChanged;
+  final bool isBusy;
+  final _StickerLayer? selectedLayer;
+  final List<_StickerLayer> layers;
+  final Future<void> Function() onAddText;
+  final Future<void> Function() onEditText;
+  final Future<void> Function() onAddImage;
+  final VoidCallback onDuplicateLayer;
+  final VoidCallback onRemoveLayer;
+  final VoidCallback onFlipHorizontal;
+  final VoidCallback onFlipVertical;
+  final VoidCallback onRotateCCW;
+  final VoidCallback onRotateCW;
+  final VoidCallback onBringForward;
+  final VoidCallback onSendBackward;
+  final VoidCallback onResetBackground;
+  final VoidCallback onRotateBackgroundCCW;
+  final VoidCallback onRotateBackgroundCW;
+  final VoidCallback onFlipBackgroundHorizontal;
+  final VoidCallback onFlipBackgroundVertical;
+  final ValueChanged<double>? onLayerScaleChanged;
+  final ValueChanged<double>? onLayerRotationChanged;
+  final ValueChanged<double>? onLayerOpacityChanged;
+  final double bgScaleValue;
+  final double bgRotationValue;
+  final ValueChanged<double> onBgScaleChanged;
+  final ValueChanged<double> onBgRotationChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasSelected = selectedLayer != null;
+    final hasSelectedText = selectedLayer?.type == _StickerLayerType.text;
+    final canBringForward =
+        hasSelected && layers.indexOf(selectedLayer!) < layers.length - 1;
+    final canSendBackward =
+        hasSelected && layers.indexOf(selectedLayer!) > 0;
+
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 220),
+      decoration: const BoxDecoration(
+        color: Color(0xFFF8FAFF),
+        border: Border(top: BorderSide(color: Color(0xFFE2E8F4))),
+      ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Quick-action chips row
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _ToolChip(
+                    icon: Icons.text_fields_rounded,
+                    label: 'Texto',
+                    color: const Color(0xFF0F4FCB),
+                    onPressed: isBusy ? null : onAddText,
+                  ),
+                  const SizedBox(width: 6),
+                  _ToolChip(
+                    icon: Icons.add_photo_alternate_outlined,
+                    label: 'Imagem',
+                    color: const Color(0xFF2A9D8F),
+                    onPressed: isBusy ? null : onAddImage,
+                  ),
+                  if (hasSelected) ...[
+                    const SizedBox(width: 6),
+                    _ToolChip(
+                      icon: Icons.copy_rounded,
+                      label: 'Duplicar',
+                      color: const Color(0xFF0891B2),
+                      onPressed: isBusy ? null : onDuplicateLayer,
+                    ),
+                    const SizedBox(width: 6),
+                    _ToolChip(
+                      icon: Icons.delete_outline_rounded,
+                      label: 'Remover',
+                      color: const Color(0xFFDC2626),
+                      onPressed: isBusy ? null : onRemoveLayer,
+                    ),
+                  ],
+                  if (hasSelectedText) ...[
+                    const SizedBox(width: 6),
+                    _ToolChip(
+                      icon: Icons.edit_note_rounded,
+                      label: 'Editar',
+                      color: const Color(0xFF7C3AED),
+                      onPressed: isBusy ? null : onEditText,
+                    ),
+                  ],
+                  if (hasSelected) ...[
+                    const SizedBox(width: 6),
+                    _ToolChip(
+                      icon: Icons.rotate_left_rounded,
+                      label: '-90°',
+                      color: const Color(0xFF059669),
+                      onPressed: isBusy ? null : onRotateCCW,
+                    ),
+                    const SizedBox(width: 6),
+                    _ToolChip(
+                      icon: Icons.rotate_right_rounded,
+                      label: '+90°',
+                      color: const Color(0xFF059669),
+                      onPressed: isBusy ? null : onRotateCW,
+                    ),
+                    const SizedBox(width: 6),
+                    _ToolChip(
+                      icon: Icons.flip_rounded,
+                      label: 'Flip H',
+                      color: const Color(0xFFF59E0B),
+                      onPressed: isBusy ? null : onFlipHorizontal,
+                    ),
+                    const SizedBox(width: 6),
+                    _ToolChip(
+                      icon: Icons.flip_rounded,
+                      label: 'Flip V',
+                      color: const Color(0xFFF59E0B),
+                      onPressed: isBusy ? null : onFlipVertical,
+                      rotateIcon: math.pi / 2,
+                    ),
+                    if (canBringForward) ...[
+                      const SizedBox(width: 6),
+                      _ToolChip(
+                        icon: Icons.arrow_upward_rounded,
+                        label: 'Subir',
+                        color: const Color(0xFF64748B),
+                        onPressed: isBusy ? null : onBringForward,
+                      ),
+                    ],
+                    if (canSendBackward) ...[
+                      const SizedBox(width: 6),
+                      _ToolChip(
+                        icon: Icons.arrow_downward_rounded,
+                        label: 'Descer',
+                        color: const Color(0xFF64748B),
+                        onPressed: isBusy ? null : onSendBackward,
+                      ),
+                    ],
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 6),
+            // Background quick actions
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _ToolChip(
+                    icon: Icons.rotate_left_rounded,
+                    label: 'Fundo -90°',
+                    color: const Color(0xFF7C3AED),
+                    onPressed: isBusy ? null : onRotateBackgroundCCW,
+                  ),
+                  const SizedBox(width: 6),
+                  _ToolChip(
+                    icon: Icons.rotate_right_rounded,
+                    label: 'Fundo +90°',
+                    color: const Color(0xFF7C3AED),
+                    onPressed: isBusy ? null : onRotateBackgroundCW,
+                  ),
+                  const SizedBox(width: 6),
+                  _ToolChip(
+                    icon: Icons.flip_rounded,
+                    label: 'Fundo H',
+                    color: const Color(0xFFE85D04),
+                    onPressed: isBusy ? null : onFlipBackgroundHorizontal,
+                  ),
+                  const SizedBox(width: 6),
+                  _ToolChip(
+                    icon: Icons.flip_rounded,
+                    label: 'Fundo V',
+                    color: const Color(0xFFE85D04),
+                    onPressed: isBusy ? null : onFlipBackgroundVertical,
+                    rotateIcon: math.pi / 2,
+                  ),
+                  const SizedBox(width: 6),
+                  _ToolChip(
+                    icon: Icons.center_focus_weak_rounded,
+                    label: 'Resetar',
+                    color: const Color(0xFF94A3B8),
+                    onPressed: isBusy ? null : onResetBackground,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 6),
+            // Inspector sliders inline
+            _EditorInspector(
+              tab: inspectorTab,
+              onTabChanged: onInspectorTabChanged,
+              isLayerSelected: hasSelected,
+              layerType: selectedLayer?.type,
+              layerScaleValue: selectedLayer?.scale ?? 1.0,
+              layerRotationValue: selectedLayer?.rotation ?? 0.0,
+              layerOpacityValue: selectedLayer?.opacity ?? 1.0,
+              onLayerScaleChanged: onLayerScaleChanged,
+              onLayerRotationChanged: onLayerRotationChanged,
+              onLayerOpacityChanged: onLayerOpacityChanged,
+              bgScaleValue: bgScaleValue,
+              bgRotationValue: bgRotationValue,
+              onBgScaleChanged: onBgScaleChanged,
+              onBgRotationChanged: onBgRotationChanged,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Compact tool chip ─────────────────────────────────────────────────────
+
+class _ToolChip extends StatelessWidget {
+  const _ToolChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onPressed,
+    this.rotateIcon,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback? onPressed;
+  final double? rotateIcon;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    return Opacity(
+      opacity: enabled ? 1.0 : 0.38,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: enabled
+                ? color.withValues(alpha: 0.10)
+                : const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: enabled
+                  ? color.withValues(alpha: 0.30)
+                  : const Color(0xFFE2E8F4),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Transform.rotate(
+                angle: rotateIcon ?? 0,
+                child: Icon(
+                  icon,
+                  size: 16,
+                  color: enabled ? color : const Color(0xFFB0B8C8),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: enabled ? color : const Color(0xFFB0B8C8),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Toolbar (kept for backwards compatibility, now unused by main layout)
 // ═══════════════════════════════════════════════════════════════════════════
 
 class _EditorToolbar extends StatelessWidget {

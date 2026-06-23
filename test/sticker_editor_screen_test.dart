@@ -23,16 +23,10 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(
-      find.text('Adicionar texto'),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
+    await tester.tap(find.text('Texto'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Adicionar texto'));
-    await tester.pumpAndSettle();
-
+    expect(find.text('Adicionar texto'), findsOneWidget);
     expect(find.text('Cor do texto'), findsOneWidget);
     expect(find.text('Fundo do texto'), findsOneWidget);
     expect(find.text('Tamanho do texto'), findsOneWidget);
@@ -41,13 +35,6 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Aplicar'));
-    await tester.pumpAndSettle();
-
-    await tester.scrollUntilVisible(
-      find.text('Monte o sticker final'),
-      -300,
-      scrollable: find.byType(Scrollable).first,
-    );
     await tester.pumpAndSettle();
 
     expect(find.text('Promo'), findsOneWidget);

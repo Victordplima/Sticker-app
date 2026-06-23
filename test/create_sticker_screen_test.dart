@@ -45,7 +45,9 @@ void main() {
       find.text('Adicione um novo sticker ao pack Coffee Cats.'),
       findsOneWidget,
     );
-    expect(find.text('Selecionar da galeria'), findsOneWidget);
+    expect(find.text('Imagem'), findsOneWidget);
+    expect(find.text('GIF'), findsOneWidget);
+    expect(find.text('Video'), findsOneWidget);
 
     await tester.scrollUntilVisible(
       find.text('Gerar e adicionar ao pack'),

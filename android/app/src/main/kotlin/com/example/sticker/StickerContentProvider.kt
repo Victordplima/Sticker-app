@@ -364,6 +364,10 @@ class StickerContentProvider : ContentProvider() {
             val targetHeight = if (isTray) 96 else 512
             val maxBytes = if (isTray) (80 * 1024) else (200 * 1024)
 
+            if (isSticker && store.findStickerPack(identifier)?.animatedStickerPack == true) {
+                return file
+            }
+
             val options = BitmapFactory.Options().apply { inPreferredConfig = Bitmap.Config.ARGB_8888 }
             val bitmap = BitmapFactory.decodeFile(file.absolutePath, options) ?: return file
             val width = bitmap.width

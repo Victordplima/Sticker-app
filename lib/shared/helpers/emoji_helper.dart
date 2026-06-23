@@ -1,4 +1,6 @@
 abstract final class EmojiHelper {
+  static const String defaultStickerEmoji = '\u{1F642}';
+
   static List<String> sanitize(List<String> emojis) {
     final normalized = <String>[];
 
@@ -16,7 +18,7 @@ abstract final class EmojiHelper {
 
   static String primaryOrFallback(
     List<String> emojis, {
-    String fallback = '🙂',
+    String fallback = defaultStickerEmoji,
   }) {
     final sanitized = sanitize(emojis);
     return sanitized.isEmpty ? fallback : sanitized.first;

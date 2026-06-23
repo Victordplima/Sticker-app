@@ -109,7 +109,7 @@ class StickerPackStore(private val context: Context) {
         val name = packJson.optString("name")
         val publisher = packJson.optString("publisher")
         val trayImageFile = packJson.optString("tray_image_file")
-        if (identifier.isBlank() || name.isBlank() || publisher.isBlank() || trayImageFile.isBlank()) {
+        if (identifier.isBlank() || trayImageFile.isBlank()) {
             return null
         }
 

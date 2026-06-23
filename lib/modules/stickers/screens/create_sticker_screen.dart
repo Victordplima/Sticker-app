@@ -22,20 +22,16 @@ class CreateStickerScreen extends ConsumerStatefulWidget {
 }
 
 class _CreateStickerScreenState extends ConsumerState<CreateStickerScreen> {
-  final _emojiController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
 
   Uint8List? _selectedImageBytes;
-  String? _selectedImageName;
+  Uint8List? _selectedGifPreviewBytes;
+  String? _selectedMediaPath;
+  String? _selectedMediaName;
+  _SelectedStickerSourceType? _selectedSourceType;
   Sticker? _previewSticker;
   bool _isPicking = false;
   bool _isSaving = false;
-
-  @override
-  void dispose() {
-    _emojiController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -100,8 +96,8 @@ class _CreateStickerScreenState extends ConsumerState<CreateStickerScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      pack == null
-                          ? 'Selecione uma imagem, edite a arte e finalize o sticker.'
+                      pack == null || pack.name.trim().isEmpty
+                          ? 'Selecione imagem, GIF ou video e finalize o sticker.'
                           : 'Adicione um novo sticker ao pack ${pack.name}.',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: const Color(0xFFE7F1FF),
@@ -112,25 +108,23 @@ class _CreateStickerScreenState extends ConsumerState<CreateStickerScreen> {
               ),
               const SizedBox(height: 24),
               _SelectionCard(
-                selectedImageBytes: _selectedImageBytes,
-                selectedImageName: _selectedImageName,
+                selectedPreviewBytes:
+                    _selectedSourceType ==
+                        _SelectedStickerSourceType.staticImage
+                    ? _selectedImageBytes
+                    : _selectedGifPreviewBytes,
+                selectedMediaName: _selectedMediaName,
+                selectedSourceType: _selectedSourceType,
                 isBusy: _isPicking || _isSaving,
                 onPickImage: _pickAndEditImage,
+                onPickGif: _pickAnimatedGif,
+                onPickVideo: _pickAnimatedVideo,
               ),
               const SizedBox(height: 16),
-              TextField(
-                controller: _emojiController,
-                decoration: const InputDecoration(
-                  labelText: 'Emojis associados',
-                  hintText: 'Ex.: 😂 🔥 ou 😂,🔥',
-                  helperText:
-                      'Use pelo menos um emoji para identificar o sticker.',
-                ),
-                onChanged: (_) => setState(() {}),
-                textInputAction: TextInputAction.done,
+              _PipelineInfo(
+                mediaName: _selectedMediaName,
+                sourceType: _selectedSourceType,
               ),
-              const SizedBox(height: 16),
-              _PipelineInfo(imageName: _selectedImageName),
               const SizedBox(height: 24),
               if (_previewSticker != null) ...[
                 Text(
@@ -172,18 +166,27 @@ class _CreateStickerScreenState extends ConsumerState<CreateStickerScreen> {
     );
   }
 
-  bool get _canSave =>
-      !_isSaving &&
-      !_isPicking &&
-      _selectedImageBytes != null &&
-      _parsedEmojis.isNotEmpty;
+  bool get _canSave => !_isSaving && !_isPicking && _hasSelectedSource;
+
+  bool get _hasSelectedSource {
+    if (_selectedSourceType == _SelectedStickerSourceType.staticImage) {
+      return _selectedImageBytes != null;
+    }
+
+    if (_selectedSourceType == _SelectedStickerSourceType.animatedGif ||
+        _selectedSourceType == _SelectedStickerSourceType.animatedVideo) {
+      return _selectedMediaPath != null;
+    }
+
+    return false;
+  }
+
+  bool get _hasAnimatedSelection =>
+      _selectedSourceType == _SelectedStickerSourceType.animatedGif ||
+      _selectedSourceType == _SelectedStickerSourceType.animatedVideo;
 
   List<String> get _parsedEmojis {
-    final raw = _emojiController.text
-        .split(RegExp(r'[\s,;]+'))
-        .where((item) => item.trim().isNotEmpty)
-        .toList();
-    return EmojiHelper.sanitize(raw);
+    return const [EmojiHelper.defaultStickerEmoji];
   }
 
   Future<void> _pickAndEditImage() async {
@@ -229,7 +232,10 @@ class _CreateStickerScreenState extends ConsumerState<CreateStickerScreen> {
 
       setState(() {
         _selectedImageBytes = editedBytes;
-        _selectedImageName = source.name;
+        _selectedGifPreviewBytes = null;
+        _selectedMediaPath = null;
+        _selectedMediaName = source.name;
+        _selectedSourceType = _SelectedStickerSourceType.staticImage;
         _previewSticker = null;
       });
     } on Exception catch (error) {
@@ -249,17 +255,114 @@ class _CreateStickerScreenState extends ConsumerState<CreateStickerScreen> {
     }
   }
 
+  Future<void> _pickAnimatedGif() async {
+    await _pickAnimatedMedia(
+      sourceType: _SelectedStickerSourceType.animatedGif,
+      pickSource: () => _picker.pickImage(source: ImageSource.gallery),
+      previewGif: true,
+    );
+  }
+
+  Future<void> _pickAnimatedVideo() async {
+    await _pickAnimatedMedia(
+      sourceType: _SelectedStickerSourceType.animatedVideo,
+      pickSource: () => _picker.pickVideo(source: ImageSource.gallery),
+      previewGif: false,
+    );
+  }
+
+  Future<void> _pickAnimatedMedia({
+    required _SelectedStickerSourceType sourceType,
+    required Future<XFile?> Function() pickSource,
+    required bool previewGif,
+  }) async {
+    if (_isPicking) {
+      return;
+    }
+
+    setState(() {
+      _isPicking = true;
+    });
+
+    try {
+      final source = await pickSource();
+      if (source == null || !mounted) {
+        return;
+      }
+
+      final creationService = ref.read(stickerCreationServiceProvider);
+      if (!creationService.supportsAnimatedSource(source.path) &&
+          !creationService.supportsAnimatedSource(source.name)) {
+        final typeLabel = sourceType == _SelectedStickerSourceType.animatedGif
+            ? 'GIF'
+            : 'video';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Selecione um $typeLabel valido.')),
+        );
+        return;
+      }
+
+      Uint8List? previewBytes;
+      if (previewGif) {
+        previewBytes = await source.readAsBytes();
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _selectedImageBytes = null;
+        _selectedGifPreviewBytes = previewBytes;
+        _selectedMediaPath = source.path;
+        _selectedMediaName = source.name;
+        _selectedSourceType = sourceType;
+        _previewSticker = null;
+      });
+    } on Exception catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Falha ao selecionar a midia: $error')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isPicking = false;
+        });
+      }
+    }
+  }
+
   Future<void> _saveSticker() async {
-    final sourceBytes = _selectedImageBytes;
-    if (sourceBytes == null) {
+    if (!_hasSelectedSource) {
       return;
     }
 
     final emojis = _parsedEmojis;
-    if (emojis.isEmpty) {
+    final pack = ref.read(packByIdProvider(widget.packId));
+    final containsAnimated =
+        pack?.stickers.any((sticker) => sticker.isAnimated) ?? false;
+    final containsStatic =
+        pack?.stickers.any((sticker) => !sticker.isAnimated) ?? false;
+    if (_hasAnimatedSelection && containsStatic) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Informe ao menos um emoji para o sticker.'),
+          content: Text(
+            'O WhatsApp nao aceita misturar stickers animados e estaticos no mesmo pack.',
+          ),
+        ),
+      );
+      return;
+    }
+    if (!_hasAnimatedSelection && containsAnimated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Este pack ja possui stickers animados. Crie outro pack para stickers estaticos.',
+          ),
         ),
       );
       return;
@@ -271,11 +374,18 @@ class _CreateStickerScreenState extends ConsumerState<CreateStickerScreen> {
 
     try {
       final creationService = ref.read(stickerCreationServiceProvider);
-      final sticker = await creationService.createSticker(
-        packId: widget.packId,
-        sourceBytes: sourceBytes,
-        emojis: emojis,
-      );
+      final sticker = _hasAnimatedSelection
+          ? await creationService.createAnimatedSticker(
+              packId: widget.packId,
+              sourcePath: _selectedMediaPath!,
+              sourceName: _selectedMediaName,
+              emojis: emojis,
+            )
+          : await creationService.createSticker(
+              packId: widget.packId,
+              sourceBytes: _selectedImageBytes!,
+              emojis: emojis,
+            );
 
       await ref
           .read(packsControllerProvider.notifier)
@@ -321,21 +431,29 @@ class _CreateStickerScreenState extends ConsumerState<CreateStickerScreen> {
 
 class _SelectionCard extends StatelessWidget {
   const _SelectionCard({
-    required this.selectedImageBytes,
-    required this.selectedImageName,
+    required this.selectedPreviewBytes,
+    required this.selectedMediaName,
+    required this.selectedSourceType,
     required this.isBusy,
     required this.onPickImage,
+    required this.onPickGif,
+    required this.onPickVideo,
   });
 
-  final Uint8List? selectedImageBytes;
-  final String? selectedImageName;
+  final Uint8List? selectedPreviewBytes;
+  final String? selectedMediaName;
+  final _SelectedStickerSourceType? selectedSourceType;
   final bool isBusy;
   final Future<void> Function() onPickImage;
+  final Future<void> Function() onPickGif;
+  final Future<void> Function() onPickVideo;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final previewBytes = selectedImageBytes;
+    final previewBytes = selectedPreviewBytes;
+    final isVideo =
+        selectedSourceType == _SelectedStickerSourceType.animatedVideo;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -356,7 +474,7 @@ class _SelectionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Imagem de origem', style: theme.textTheme.titleLarge),
+          Text('Midia de origem', style: theme.textTheme.titleLarge),
           const SizedBox(height: 12),
           AspectRatio(
             aspectRatio: 1,
@@ -366,7 +484,15 @@ class _SelectionCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surfaceContainerHighest,
                 ),
-                child: previewBytes == null
+                child: isVideo
+                    ? Center(
+                        child: Icon(
+                          Icons.movie_creation_outlined,
+                          size: 54,
+                          color: theme.colorScheme.primary,
+                        ),
+                      )
+                    : previewBytes == null
                     ? Center(
                         child: Icon(
                           Icons.add_photo_alternate_outlined,
@@ -379,16 +505,30 @@ class _SelectionCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          if (selectedImageName != null) ...[
-            Text(selectedImageName!, style: theme.textTheme.bodySmall),
+          if (selectedMediaName != null) ...[
+            Text(selectedMediaName!, style: theme.textTheme.bodySmall),
             const SizedBox(height: 12),
           ],
-          OutlinedButton.icon(
-            onPressed: isBusy ? null : onPickImage,
-            icon: const Icon(Icons.photo_library_outlined),
-            label: Text(
-              previewBytes == null ? 'Selecionar da galeria' : 'Trocar imagem',
-            ),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              OutlinedButton.icon(
+                onPressed: isBusy ? null : onPickImage,
+                icon: const Icon(Icons.photo_library_outlined),
+                label: const Text('Imagem'),
+              ),
+              OutlinedButton.icon(
+                onPressed: isBusy ? null : onPickGif,
+                icon: const Icon(Icons.gif_box_outlined),
+                label: const Text('GIF'),
+              ),
+              OutlinedButton.icon(
+                onPressed: isBusy ? null : onPickVideo,
+                icon: const Icon(Icons.video_library_outlined),
+                label: const Text('Video'),
+              ),
+            ],
           ),
         ],
       ),
@@ -397,14 +537,21 @@ class _SelectionCard extends StatelessWidget {
 }
 
 class _PipelineInfo extends StatelessWidget {
-  const _PipelineInfo({required this.imageName});
+  const _PipelineInfo({required this.mediaName, required this.sourceType});
 
-  final String? imageName;
+  final String? mediaName;
+  final _SelectedStickerSourceType? sourceType;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final hasImage = imageName != null;
+    final hasMedia = mediaName != null;
+    final selectedLabel = switch (sourceType) {
+      _SelectedStickerSourceType.staticImage => 'Imagem selecionada',
+      _SelectedStickerSourceType.animatedGif => 'GIF selecionado',
+      _SelectedStickerSourceType.animatedVideo => 'Video selecionado',
+      null => 'Midia selecionada',
+    };
 
     return Container(
       width: double.infinity,
@@ -421,19 +568,19 @@ class _PipelineInfo extends StatelessWidget {
         children: [
           Text('Status', style: theme.textTheme.titleLarge),
           const SizedBox(height: 12),
-          const _StepRow(text: 'Selecione uma imagem da galeria'),
-          const _StepRow(text: 'Edite a arte com camadas, texto e imagens'),
-          const _StepRow(text: 'Ajuste tamanho e posicionamento final'),
-          const _StepRow(text: 'Informe os emojis'),
-          if (hasImage) ...[
+          const _StepRow(text: 'Selecione imagem, GIF ou video da galeria'),
+          const _StepRow(text: 'Imagem estatica abre o editor de arte'),
+          const _StepRow(text: 'GIF e video viram WEBP animado 512x512'),
+          const _StepRow(text: 'Emoji padrao aplicado'),
+          if (hasMedia) ...[
             const SizedBox(height: 12),
             Text(
-              'Imagem selecionada: $imageName',
+              '$selectedLabel: $mediaName',
               style: theme.textTheme.bodyMedium,
             ),
           ] else ...[
             Text(
-              'Escolha uma imagem para abrir o editor do sticker.',
+              'Escolha uma midia para criar o sticker.',
               style: theme.textTheme.bodyMedium,
             ),
           ],
@@ -468,3 +615,5 @@ class _StepRow extends StatelessWidget {
     );
   }
 }
+
+enum _SelectedStickerSourceType { staticImage, animatedGif, animatedVideo }
