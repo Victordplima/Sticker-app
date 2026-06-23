@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -187,17 +188,18 @@ class _PackActions extends ConsumerWidget {
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text(
-                    'WhatsApp aberto. Confirme a adicao do pack no app.',
-                  ),
+                  content: Text('Pack adicionado ao WhatsApp com sucesso.'),
                 ),
               );
             }
           } catch (err) {
             if (context.mounted) {
+              final message = err is PlatformException && err.message != null
+                  ? err.message!
+                  : err.toString();
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Falha ao adicionar pack no WhatsApp: $err'),
+                  content: Text('Falha ao adicionar pack no WhatsApp: $message'),
                 ),
               );
             }

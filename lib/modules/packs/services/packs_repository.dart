@@ -8,6 +8,7 @@ import 'dart:typed_data';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/services/local_storage_path_service.dart';
+import '../../../shared/helpers/emoji_helper.dart';
 import '../../stickers/models/sticker.dart';
 import '../models/sticker_pack.dart';
 
@@ -216,15 +217,20 @@ class PacksRepository {
         final isSameFile = source.path == dest.path;
 
         if (isSameFile) {
-          // File is already in the correct location; just add the entry
-          exportedStickerEntries.add({'image_file': 'stickers/$destFileName', 'emojis': sticker.emojis});
+          exportedStickerEntries.add({
+            'image_file': 'stickers/$destFileName',
+            'emojis': _exportEmojis(sticker.emojis),
+          });
           continue;
         }
 
         // If animated or already same extension, just copy original
         if (sticker.isAnimated || sourceExt == desiredExt) {
           await source.copy(dest.path);
-          exportedStickerEntries.add({'image_file': 'stickers/$destFileName', 'emojis': sticker.emojis});
+          exportedStickerEntries.add({
+            'image_file': 'stickers/$destFileName',
+            'emojis': _exportEmojis(sticker.emojis),
+          });
           continue;
         }
 
@@ -234,7 +240,10 @@ class PacksRepository {
         if (decoded == null) {
           // fallback: copy as-is
           await source.copy(dest.path);
-          exportedStickerEntries.add({'image_file': 'stickers/$destFileName', 'emojis': sticker.emojis});
+          exportedStickerEntries.add({
+            'image_file': 'stickers/$destFileName',
+            'emojis': _exportEmojis(sticker.emojis),
+          });
           continue;
         }
 
@@ -289,16 +298,29 @@ class PacksRepository {
           developer.log('falha no fallback copy: $e', name: 'PacksRepository', error: e, stackTrace: st);
         }
 
-        exportedStickerEntries.add({'image_file': 'stickers/$destFileName', 'emojis': sticker.emojis});
+        exportedStickerEntries.add({
+          'image_file': 'stickers/$destFileName',
+          'emojis': _exportEmojis(sticker.emojis),
+        });
       } catch (e, st) {
         developer.log('erro processando sticker ${sticker.filePath}: $e', name: 'PacksRepository', error: e, stackTrace: st);
       }
     }
 
+    if (exportedStickerEntries.length < 3) {
+      throw StateError(
+        'O WhatsApp exige pelo menos 3 stickers validos. Apenas ${exportedStickerEntries.length} foram exportados.',
+      );
+    }
+
+    final packName = pack.name.trim().isEmpty ? 'Meu Pack' : pack.name.trim();
+    final packPublisher =
+        pack.author.trim().isEmpty ? 'Sticker Studio' : pack.author.trim();
+
     final contents = {
       'identifier': pack.id,
-      'name': pack.name,
-      'publisher': pack.author,
+      'name': packName,
+      'publisher': packPublisher,
       'tray_image_file': trayFileName,
       'image_data_version': DateTime.now().millisecondsSinceEpoch.toString(),
       'avoid_cache': false,
@@ -381,5 +403,13 @@ class PacksRepository {
     final separator = Platform.pathSeparator;
     final index = filePath.lastIndexOf(separator);
     return index == -1 ? filePath : filePath.substring(index + 1);
+  }
+
+  List<String> _exportEmojis(List<String> emojis) {
+    final sanitized = EmojiHelper.sanitize(emojis);
+    if (sanitized.isEmpty) {
+      return const [EmojiHelper.defaultStickerEmoji];
+    }
+    return sanitized.take(3).toList();
   }
 }

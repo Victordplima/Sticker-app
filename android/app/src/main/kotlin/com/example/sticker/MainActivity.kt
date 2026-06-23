@@ -1,5 +1,6 @@
 package com.example.sticker
 
+import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -8,6 +9,7 @@ import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.File
 
 class MainActivity : FlutterActivity() {
 	companion object {
@@ -16,10 +18,17 @@ class MainActivity : FlutterActivity() {
 		private const val CONSUMER_WHATSAPP_PACKAGE = "com.whatsapp"
 		private const val BUSINESS_WHATSAPP_PACKAGE = "com.whatsapp.w4b"
 		private const val ADD_PACK_REQUEST_CODE = 200
+		private const val VALIDATION_ERROR_EXTRA = "validation_error"
+		private const val MAX_TRAY_BYTES = 50 * 1024
+		private const val MAX_STATIC_STICKER_BYTES = 100 * 1024
+		private const val MAX_ANIMATED_STICKER_BYTES = 500 * 1024
 	}
+
+	private var pendingResult: MethodChannel.Result? = null
 
 	override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
 		super.configureFlutterEngine(flutterEngine)
+
 		MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
 			when (call.method) {
 				"addStickerPack" -> {
@@ -29,18 +38,49 @@ class MainActivity : FlutterActivity() {
 						return@setMethodCallHandler
 					}
 
+					if (pendingResult != null) {
+						result.error("busy", "Ja existe uma adicao de pack em andamento.", null)
+						return@setMethodCallHandler
+					}
+
 					try {
 						val packData = parsePackData(rawPackData)
 						validatePackData(packData)
-						addStickerPack(packData)
-						result.success(null)
+						pendingResult = result
+						launchAddStickerPackIntent(packData)
 					} catch (exception: Exception) {
 						Log.e("MainActivity", "Erro ao adicionar pack ao WhatsApp", exception)
+						pendingResult = null
 						result.error("whatsapp_add_failed", exception.message, null)
 					}
 				}
 				else -> result.notImplemented()
 			}
+		}
+	}
+
+	@Deprecated("Deprecated in Java")
+	override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+		super.onActivityResult(requestCode, resultCode, data)
+
+		if (requestCode != ADD_PACK_REQUEST_CODE) {
+			return
+		}
+
+		val result = pendingResult ?: return
+		pendingResult = null
+
+		if (resultCode == Activity.RESULT_OK) {
+			result.success(null)
+			return
+		}
+
+		val validationError = data?.getStringExtra(VALIDATION_ERROR_EXTRA)
+		if (!validationError.isNullOrBlank()) {
+			Log.e("MainActivity", "WhatsApp rejeitou o pack: $validationError")
+			result.error("whatsapp_validation_failed", validationError, null)
+		} else {
+			result.error("whatsapp_add_cancelled", "Adicao do pack cancelada no WhatsApp.", null)
 		}
 	}
 
@@ -71,23 +111,63 @@ class MainActivity : FlutterActivity() {
 		if (!isWhatsAppInstalled()) {
 			throw IllegalStateException("WhatsApp nao esta instalado no dispositivo.")
 		}
-		if (packData.stickers.size < 3) {
+
+		val store = StickerPackStore(this)
+		val stickerPack = store.findStickerPack(packData.identifier)
+			?: throw IllegalStateException("Pack exportado nao encontrado no armazenamento local.")
+
+		if (stickerPack.stickers.size < 3) {
 			throw IllegalArgumentException("O WhatsApp exige pelo menos 3 stickers por pack.")
 		}
-		if (packData.stickers.size > 30) {
+		if (stickerPack.stickers.size > 30) {
 			throw IllegalArgumentException("O WhatsApp permite no maximo 30 stickers por pack.")
 		}
 
-		val stickerPack = StickerPackStore(this).findStickerPack(packData.identifier)
-			?: throw IllegalStateException("Pack exportado nao encontrado no armazenamento local.")
+		if (stickerPack.name.isBlank()) {
+			throw IllegalStateException("O pack precisa de um nome antes de ser enviado ao WhatsApp.")
+		}
+		if (stickerPack.publisher.isBlank()) {
+			throw IllegalStateException("O pack precisa de um autor/publicador antes de ser enviado ao WhatsApp.")
+		}
 
-		// Normalize ambos os valores para comparar apenas o nome do arquivo
 		if (stickerPack.trayFileName() != packData.trayImageFile.substringAfterLast('/')) {
 			throw IllegalStateException("Tray icon exportado nao corresponde ao pack informado.")
 		}
+
+		val packDirectory = store.getPackDirectory(packData.identifier)
+		val trayFile = File(packDirectory, stickerPack.trayImageFile)
+		if (!trayFile.exists() || trayFile.length() == 0L) {
+			throw IllegalStateException("Tray icon nao encontrado ou vazio.")
+		}
+		if (trayFile.length() > MAX_TRAY_BYTES) {
+			throw IllegalStateException(
+				"Tray icon acima de 50 KB (${trayFile.length() / 1024} KB).",
+			)
+		}
+
+		val maxStickerBytes = if (stickerPack.animatedStickerPack) {
+			MAX_ANIMATED_STICKER_BYTES
+		} else {
+			MAX_STATIC_STICKER_BYTES
+		}
+
+		for (sticker in stickerPack.stickers) {
+			val stickerFile = File(packDirectory, sticker.imagePath)
+			if (!stickerFile.exists() || stickerFile.length() == 0L) {
+				throw IllegalStateException("Sticker ausente ou vazio: ${sticker.fileName}")
+			}
+			if (stickerFile.length() > maxStickerBytes) {
+				throw IllegalStateException(
+					"Sticker ${sticker.fileName} acima do limite do WhatsApp (${stickerFile.length() / 1024} KB).",
+				)
+			}
+			if (sticker.emojis.isEmpty()) {
+				throw IllegalStateException("Sticker ${sticker.fileName} precisa de pelo menos 1 emoji.")
+			}
+		}
 	}
 
-	private fun addStickerPack(packData: StickerPackData) {
+	private fun launchAddStickerPackIntent(packData: StickerPackData) {
 		val authority = "$packageName.stickercontentprovider"
 		val intent = Intent().apply {
 			action = ADD_STICKER_PACK_ACTION
@@ -116,23 +196,21 @@ class MainActivity : FlutterActivity() {
 		for (pkg in possibleTargets) {
 			intent.`package` = pkg
 			try {
-				// WhatsApp requires startActivityForResult to show the dialog
+				@Suppress("DEPRECATION")
 				startActivityForResult(intent, ADD_PACK_REQUEST_CODE)
 				started = true
 				break
 			} catch (e: ActivityNotFoundException) {
 				Log.w("MainActivity", "ActivityNotFoundException for $pkg", e)
-				// try next
 			} catch (e: Exception) {
 				Log.w("MainActivity", "Exception starting activity for $pkg", e)
-				// try next
 			}
 		}
 
 		if (!started) {
-			// Fallback: try without specifying a package
 			intent.`package` = null
 			try {
+				@Suppress("DEPRECATION")
 				startActivityForResult(intent, ADD_PACK_REQUEST_CODE)
 				started = true
 			} catch (e: Exception) {
@@ -141,7 +219,10 @@ class MainActivity : FlutterActivity() {
 		}
 
 		if (!started) {
-			throw IllegalStateException("Nao foi possivel abrir o WhatsApp para adicionar o pack. Nenhuma atividade encontrada para a intent.")
+			pendingResult = null
+			throw IllegalStateException(
+				"Nao foi possivel abrir o WhatsApp para adicionar o pack. Nenhuma atividade encontrada para a intent.",
+			)
 		}
 	}
 

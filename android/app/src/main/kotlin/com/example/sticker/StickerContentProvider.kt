@@ -362,9 +362,12 @@ class StickerContentProvider : ContentProvider() {
             val isSticker = ext == "webp"
             val targetWidth = if (isTray) 96 else 512
             val targetHeight = if (isTray) 96 else 512
-            val maxBytes = if (isTray) (80 * 1024) else (200 * 1024)
+            val maxBytes = if (isTray) (50 * 1024) else (100 * 1024)
 
             if (isSticker && store.findStickerPack(identifier)?.animatedStickerPack == true) {
+                if (file.length() > 500 * 1024) {
+                    Log.w("StickerContentProvider", "animated sticker above 500KB: ${file.absolutePath}")
+                }
                 return file
             }
 

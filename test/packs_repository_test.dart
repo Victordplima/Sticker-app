@@ -28,21 +28,24 @@ void main() {
     final stickersDirectory = await storage.getPackStickersDirectory(
       createdPack.id,
     );
-    final stickerFile = File(
-      '${stickersDirectory.path}${Platform.pathSeparator}sticker-1.png',
-    );
-    final image = img.Image(width: 512, height: 512, numChannels: 4);
-    img.fill(image, color: img.ColorRgba8(255, 255, 255, 255));
-    await stickerFile.writeAsBytes(img.encodePng(image), flush: true);
 
-    await repository.addSticker(
-      packId: createdPack.id,
-      sticker: Sticker(
-        id: 'sticker-1',
-        filePath: stickerFile.path,
-        emojis: const ['🔥'],
-      ),
-    );
+    for (var index = 1; index <= 3; index++) {
+      final stickerFile = File(
+        '${stickersDirectory.path}${Platform.pathSeparator}sticker-$index.png',
+      );
+      final image = img.Image(width: 512, height: 512, numChannels: 4);
+      img.fill(image, color: img.ColorRgba8(255, 255, 255, 255));
+      await stickerFile.writeAsBytes(img.encodePng(image), flush: true);
+
+      await repository.addSticker(
+        packId: createdPack.id,
+        sticker: Sticker(
+          id: 'sticker-$index',
+          filePath: stickerFile.path,
+          emojis: const ['🔥'],
+        ),
+      );
+    }
 
     // Explicitly export pack to generate contents.json and tray image on disk.
     await repository.exportPackForWhatsApp(createdPack.id);
@@ -52,7 +55,7 @@ void main() {
 
     expect(packs, hasLength(1));
     expect(packs.single.name, 'Pack Persistido');
-    expect(packs.single.stickers, hasLength(1));
+    expect(packs.single.stickers, hasLength(3));
     expect(packs.single.trayImagePath, isNotNull);
 
     final metadataFile = await storage.getPackMetadataFile(createdPack.id);

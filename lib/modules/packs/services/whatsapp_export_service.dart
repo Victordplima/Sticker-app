@@ -1,19 +1,30 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/services/local_storage_path_service.dart';
 import '../models/sticker_pack.dart';
 
 final whatsappExportServiceProvider = Provider<WhatsAppExportService>((ref) {
-  return const WhatsAppExportService();
+  return WhatsAppExportService(
+    storagePathService: ref.read(localStoragePathServiceProvider),
+  );
 });
 
 class WhatsAppExportService {
-  const WhatsAppExportService();
+  const WhatsAppExportService({
+    LocalStoragePathService? storagePathService,
+  }) : _storagePathService = storagePathService ?? const LocalStoragePathService();
 
   static const MethodChannel _channel = MethodChannel('whatsapp_stickers');
+  static const int _maxTrayBytes = 50 * 1024;
+  static const int _maxStaticStickerBytes = 100 * 1024;
+  static const int _maxAnimatedStickerBytes = 500 * 1024;
+
+  final LocalStoragePathService _storagePathService;
 
   Future<void> addStickerPack(StickerPack pack) async {
     if (kIsWeb || !Platform.isAndroid) {
@@ -22,66 +33,123 @@ class WhatsAppExportService {
       );
     }
 
-    _validatePack(pack);
+    final exportedPack = await _loadExportedPack(pack);
+    _validateExportedPack(exportedPack);
 
     await _channel.invokeMethod<void>('addStickerPack', {
       'packData': {
         'identifier': pack.id,
-        'name': pack.name,
-        'publisher': pack.author,
-        'trayImageFile': _fileName(pack.trayImagePath!),
-        'stickers': [
-          for (final sticker in pack.stickers) _fileName(sticker.filePath),
-        ],
+        'name': exportedPack.name,
+        'publisher': exportedPack.publisher,
+        'trayImageFile': exportedPack.trayImageFile,
+        'stickers': exportedPack.stickerFileNames,
       },
     });
   }
 
-  void _validatePack(StickerPack pack) {
-    if (pack.stickers.length < 3) {
+  Future<_ExportedPackData> _loadExportedPack(StickerPack pack) async {
+    final contentsFile = await _storagePathService.getPackContentsFile(pack.id);
+    if (!await contentsFile.exists()) {
       throw const WhatsAppExportException(
-        'O WhatsApp exige pelo menos 3 stickers por pack.',
+        'O pack ainda nao foi exportado para o WhatsApp.',
       );
     }
 
-    if (pack.stickers.length > 30) {
+    final decoded = jsonDecode(await contentsFile.readAsString()) as Map<String, dynamic>;
+    final stickersJson = decoded['stickers'] as List<dynamic>? ?? const [];
+    final stickerFileNames = <String>[];
+
+    for (final entry in stickersJson) {
+      final stickerMap = entry as Map<String, dynamic>;
+      final imageFile = stickerMap['image_file'] as String? ?? '';
+      if (imageFile.isEmpty) {
+        continue;
+      }
+      stickerFileNames.add(_fileName(imageFile));
+    }
+
+    final trayImageFile = decoded['tray_image_file'] as String? ?? '';
+    if (trayImageFile.isEmpty) {
+      throw const WhatsAppExportException(
+        'O tray icon do pack exportado esta ausente.',
+      );
+    }
+
+    return _ExportedPackData(
+      name: (decoded['name'] as String? ?? pack.name).trim(),
+      publisher: (decoded['publisher'] as String? ?? pack.author).trim(),
+      trayImageFile: _fileName(trayImageFile),
+      stickerFileNames: stickerFileNames,
+      animatedStickerPack: decoded['animated_sticker_pack'] as bool? ?? false,
+      packDirectory: await _storagePathService.getPackDirectory(pack.id),
+    );
+  }
+
+  void _validateExportedPack(_ExportedPackData exportedPack) {
+    if (exportedPack.stickerFileNames.length < 3) {
+      throw WhatsAppExportException(
+        'O WhatsApp exige pelo menos 3 stickers por pack. Apenas ${exportedPack.stickerFileNames.length} foram exportados.',
+      );
+    }
+
+    if (exportedPack.stickerFileNames.length > 30) {
       throw const WhatsAppExportException(
         'O WhatsApp permite no maximo 30 stickers por pack.',
       );
     }
 
-    if (pack.trayImagePath == null || pack.trayImagePath!.isEmpty) {
+    if (exportedPack.name.isEmpty) {
       throw const WhatsAppExportException(
-        'O pack precisa de um tray icon antes de ser enviado ao WhatsApp.',
+        'O pack precisa de um nome antes de ser enviado ao WhatsApp.',
       );
     }
 
-    final trayFile = File(pack.trayImagePath!);
+    if (exportedPack.publisher.isEmpty) {
+      throw const WhatsAppExportException(
+        'O pack precisa de um autor/publicador antes de ser enviado ao WhatsApp.',
+      );
+    }
+
+    final trayFile = File(
+      '${exportedPack.packDirectory.path}${Platform.pathSeparator}${exportedPack.trayImageFile}',
+    );
     if (!trayFile.existsSync()) {
       throw const WhatsAppExportException(
         'O tray icon do pack nao foi encontrado no armazenamento local.',
       );
     }
-
-    final containsAnimated = pack.stickers.any((sticker) => sticker.isAnimated);
-    final containsStatic = pack.stickers.any((sticker) => !sticker.isAnimated);
-    if (containsAnimated && containsStatic) {
-      throw const WhatsAppExportException(
-        'O pack nao pode misturar stickers estaticos e animados.',
+    if (trayFile.lengthSync() > _maxTrayBytes) {
+      throw WhatsAppExportException(
+        'O tray icon precisa ter no maximo 50 KB (atual: ${(trayFile.lengthSync() / 1024).ceil()} KB).',
       );
     }
 
-    for (final sticker in pack.stickers) {
-      final file = File(sticker.filePath);
-      if (!file.existsSync()) {
+    final maxStickerBytes = exportedPack.animatedStickerPack
+        ? _maxAnimatedStickerBytes
+        : _maxStaticStickerBytes;
+
+    for (final stickerFileName in exportedPack.stickerFileNames) {
+      final stickerFile = File(
+        '${exportedPack.packDirectory.path}${Platform.pathSeparator}stickers${Platform.pathSeparator}$stickerFileName',
+      );
+      if (!stickerFile.existsSync()) {
         throw WhatsAppExportException(
-          'Sticker nao encontrado: ${sticker.filePath}',
+          'Sticker exportado nao encontrado: $stickerFileName',
         );
       }
-
-      if (!sticker.filePath.toLowerCase().endsWith('.webp')) {
+      if (stickerFile.lengthSync() == 0) {
         throw WhatsAppExportException(
-          'Sticker invalido para WhatsApp: ${sticker.filePath}. O formato deve ser WEBP.',
+          'Sticker exportado esta vazio: $stickerFileName',
+        );
+      }
+      if (stickerFile.lengthSync() > maxStickerBytes) {
+        throw WhatsAppExportException(
+          'Sticker $stickerFileName excede o limite do WhatsApp (${(stickerFile.lengthSync() / 1024).ceil()} KB).',
+        );
+      }
+      if (!stickerFileName.toLowerCase().endsWith('.webp')) {
+        throw WhatsAppExportException(
+          'Sticker invalido para WhatsApp: $stickerFileName. O formato deve ser WEBP.',
         );
       }
     }
@@ -95,6 +163,24 @@ class WhatsAppExportService {
     final index = normalized.lastIndexOf(separator);
     return index == -1 ? normalized : normalized.substring(index + 1);
   }
+}
+
+class _ExportedPackData {
+  const _ExportedPackData({
+    required this.name,
+    required this.publisher,
+    required this.trayImageFile,
+    required this.stickerFileNames,
+    required this.animatedStickerPack,
+    required this.packDirectory,
+  });
+
+  final String name;
+  final String publisher;
+  final String trayImageFile;
+  final List<String> stickerFileNames;
+  final bool animatedStickerPack;
+  final Directory packDirectory;
 }
 
 class WhatsAppExportException implements Exception {
