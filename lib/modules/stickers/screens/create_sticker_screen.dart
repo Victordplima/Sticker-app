@@ -54,59 +54,13 @@ class _CreateStickerScreenState extends ConsumerState<CreateStickerScreen> {
           child: ListView(
             padding: const EdgeInsets.all(20),
             children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(22),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(30),
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF0F4FCB), Color(0xFF67A4FF)],
-                  ),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x1A1A5EBA),
-                      blurRadius: 28,
-                      offset: Offset(0, 14),
-                    ),
-                  ],
+              if (pack != null && pack.name.trim().isNotEmpty) ...[
+                Text(
+                  'Pack: ${pack.name}',
+                  style: Theme.of(context).textTheme.bodyLarge,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.16),
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: const Icon(
-                        Icons.auto_fix_high_rounded,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Criar sticker',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.headlineMedium?.copyWith(color: Colors.white),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      pack == null || pack.name.trim().isEmpty
-                          ? 'Selecione imagem, GIF ou video e finalize o sticker.'
-                          : 'Adicione um novo sticker ao pack ${pack.name}.',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: const Color(0xFFE7F1FF),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
+                const SizedBox(height: 16),
+              ],
               _SelectionCard(
                 selectedPreviewBytes:
                     _selectedSourceType ==
@@ -571,7 +525,6 @@ class _PipelineInfo extends StatelessWidget {
           const _StepRow(text: 'Selecione imagem, GIF ou video da galeria'),
           const _StepRow(text: 'Imagem estatica abre o editor de arte'),
           const _StepRow(text: 'GIF e video viram WEBP animado 512x512'),
-          const _StepRow(text: 'Emoji padrao aplicado'),
           if (hasMedia) ...[
             const SizedBox(height: 12),
             Text(

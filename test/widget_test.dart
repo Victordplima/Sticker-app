@@ -55,7 +55,7 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Sticker Studio'), findsOneWidget);
+    expect(find.text('Biblioteca'), findsOneWidget);
 
     await tester.scrollUntilVisible(
       find.text('Coffee Cats'),

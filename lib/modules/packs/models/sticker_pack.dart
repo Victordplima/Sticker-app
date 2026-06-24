@@ -17,24 +17,6 @@ class StickerPack {
 
   int get stickerCount => stickers.length;
 
-  List<String> get previewEmojis {
-    final result = <String>[];
-
-    for (final sticker in stickers) {
-      if (result.length >= 4) {
-        break;
-      }
-
-      if (sticker.emojis.isEmpty) {
-        continue;
-      }
-
-      result.add(sticker.emojis.first);
-    }
-
-    return result;
-  }
-
   StickerPack copyWith({
     String? id,
     String? name,

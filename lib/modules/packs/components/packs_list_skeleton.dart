@@ -24,66 +24,35 @@ class PacksListSkeleton extends StatelessWidget {
                     AppSpacing.page,
                     AppSpacing.section,
                   ),
-                  child: Column(
+                  child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                SkeletonBox(
-                                  height: 38,
-                                  width: 220,
-                                  borderRadius: 8,
-                                ),
-                                SizedBox(height: 10),
-                                SkeletonBox(height: 16, borderRadius: 8),
-                                SizedBox(height: 6),
-                                SkeletonBox(
-                                  height: 16,
-                                  width: 300,
-                                  borderRadius: 8,
-                                ),
-                              ],
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SkeletonBox(
+                              height: 38,
+                              width: 180,
+                              borderRadius: 8,
                             ),
-                          ),
-                          if (isWide) ...[
-                            const SizedBox(width: 16),
-                            const SkeletonBox(
-                              height: 46,
-                              width: 136,
+                            SizedBox(height: 8),
+                            SkeletonBox(
+                              height: 16,
+                              width: 110,
                               borderRadius: 8,
                             ),
                           ],
-                        ],
+                        ),
                       ),
-                      const SizedBox(height: AppSpacing.section),
-                      _OverviewSkeleton(isWide: isWide),
-                      const SizedBox(height: AppSpacing.section),
-                      Row(
-                        children: [
-                          const Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              SkeletonBox(
-                                height: 28,
-                                width: 150,
-                                borderRadius: 8,
-                              ),
-                              SizedBox(height: 8),
-                              SkeletonBox(
-                                height: 16,
-                                width: 110,
-                                borderRadius: 8,
-                              ),
-                            ],
-                          ),
-                          const Spacer(),
-                          SkeletonBox(height: 40, width: 40, borderRadius: 8),
-                        ],
-                      ),
+                      if (isWide) ...[
+                        const SizedBox(width: 16),
+                        const SkeletonBox(
+                          height: 46,
+                          width: 136,
+                          borderRadius: 8,
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -102,7 +71,7 @@ class PacksListSkeleton extends StatelessWidget {
                   itemCount: isWide ? 6 : 3,
                   gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
                     maxCrossAxisExtent: isWide ? 360 : 520,
-                    mainAxisExtent: 316,
+                    mainAxisExtent: 260,
                     mainAxisSpacing: 16,
                     crossAxisSpacing: 16,
                   ),
@@ -130,45 +99,6 @@ class _CenteredSkeleton extends StatelessWidget {
         child: child,
       ),
     );
-  }
-}
-
-class _OverviewSkeleton extends StatelessWidget {
-  const _OverviewSkeleton({required this.isWide});
-
-  final bool isWide;
-
-  @override
-  Widget build(BuildContext context) {
-    final hero = const SkeletonBox(height: 270, borderRadius: 8);
-    final metrics = const Column(
-      children: [
-        SkeletonBox(height: 130, borderRadius: 8),
-        SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(child: SkeletonBox(height: 128, borderRadius: 8)),
-            SizedBox(width: 12),
-            Expanded(child: SkeletonBox(height: 128, borderRadius: 8)),
-          ],
-        ),
-      ],
-    );
-
-    if (isWide) {
-      return IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(flex: 6, child: hero),
-            const SizedBox(width: 16),
-            Expanded(flex: 5, child: metrics),
-          ],
-        ),
-      );
-    }
-
-    return Column(children: [hero, const SizedBox(height: 16), metrics]);
   }
 }
 
@@ -204,15 +134,7 @@ class _PackCardSkeleton extends StatelessWidget {
             SizedBox(height: 12),
             SkeletonBox(height: 112, borderRadius: 8),
             SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                SkeletonBox(height: 32, width: 58, borderRadius: 99),
-                SkeletonBox(height: 32, width: 58, borderRadius: 99),
-                SkeletonBox(height: 32, width: 58, borderRadius: 99),
-              ],
-            ),
+            SkeletonBox(height: 16, width: 72, borderRadius: 8),
           ],
         ),
       ),

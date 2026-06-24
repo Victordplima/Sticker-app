@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../stickers/components/sticker_preview_tile.dart';
 import '../models/sticker_pack.dart';
 
 class PackCard extends StatelessWidget {
@@ -17,7 +18,7 @@ class PackCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colors = _paletteFor(pack.id);
+    final previews = pack.stickers.take(4).toList();
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -43,7 +44,7 @@ class PackCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          pack.name,
+                          pack.name.trim().isEmpty ? 'Pack sem nome' : pack.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.titleLarge,
@@ -68,74 +69,27 @@ class PackCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              Container(
+              SizedBox(
                 height: 112,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: colors,
-                  ),
-                ),
-                child: Stack(
-                  children: [
-                    Positioned(
-                      top: 12,
-                      left: 12,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 7,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          borderRadius: BorderRadius.circular(99),
-                        ),
-                        child: Text(
-                          '${pack.stickerCount} stickers',
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
+                child: previews.isEmpty
+                    ? _EmptyPreview(theme: theme)
+                    : Row(
+                        children: [
+                          for (var index = 0; index < previews.length; index++) ...[
+                            if (index > 0) const SizedBox(width: 8),
+                            Expanded(
+                              child: StickerPreviewTile(sticker: previews[index]),
+                            ),
+                          ],
+                        ],
                       ),
-                    ),
-                    Positioned(
-                      right: 12,
-                      bottom: 12,
-                      child: Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.2),
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.photo_library_rounded,
-                          size: 28,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ),
               const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final emoji in pack.previewEmojis)
-                    Chip(
-                      label: Text(emoji),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  if (pack.previewEmojis.isEmpty)
-                    const Chip(label: Text('Pack vazio')),
-                ],
+              Text(
+                pack.stickerCount == 1
+                    ? '1 sticker'
+                    : '${pack.stickerCount} stickers',
+                style: theme.textTheme.bodyMedium,
               ),
             ],
           ),
@@ -143,15 +97,27 @@ class PackCard extends StatelessWidget {
       ),
     );
   }
+}
 
-  List<Color> _paletteFor(String seed) {
-    const palettes = [
-      [Color(0xFF184E77), Color(0xFF35A7A0)],
-      [Color(0xFFFF6B6B), Color(0xFFFFB703)],
-      [Color(0xFF2F4858), Color(0xFF86BBD8)],
-      [Color(0xFF6D597A), Color(0xFFE56B6F)],
-    ];
+class _EmptyPreview extends StatelessWidget {
+  const _EmptyPreview({required this.theme});
 
-    return palettes[seed.hashCode.abs() % palettes.length];
+  final ThemeData theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Center(
+        child: Icon(
+          Icons.add_photo_alternate_outlined,
+          size: 32,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
   }
 }

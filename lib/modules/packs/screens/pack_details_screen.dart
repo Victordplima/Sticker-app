@@ -67,57 +67,24 @@ class PackDetailsScreen extends ConsumerWidget {
           child: ListView(
             padding: const EdgeInsets.all(20),
             children: [
-              Container(
-                padding: const EdgeInsets.all(22),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(30),
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF0F4FCB), Color(0xFF67A4FF)],
-                  ),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x1A1A5EBA),
-                      blurRadius: 28,
-                      offset: Offset(0, 14),
-                    ),
-                  ],
+              if (pack.author.trim().isNotEmpty) ...[
+                Text(
+                  'por ${pack.author}',
+                  style: Theme.of(context).textTheme.bodyLarge,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      pack.name,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.headlineMedium?.copyWith(color: Colors.white),
-                    ),
-                    if (pack.author.trim().isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        'Autor: ${pack.author}',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: const Color(0xFFE7F1FF),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 20),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: [
-                        _DetailBadge(label: '${pack.stickerCount} stickers'),
-                      ],
-                    ),
-                  ],
-                ),
+                const SizedBox(height: 8),
+              ],
+              Text(
+                pack.stickerCount == 1
+                    ? '1 sticker'
+                    : '${pack.stickerCount} stickers',
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               _PackActions(packId: packId),
               const SizedBox(height: 24),
               Text(
-                'Preview do pack',
+                'Stickers',
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
               const SizedBox(height: 12),
@@ -234,26 +201,3 @@ class _PackActions extends ConsumerWidget {
   }
 }
 
-class _DetailBadge extends StatelessWidget {
-  const _DetailBadge({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(99),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(
-          context,
-        ).textTheme.labelLarge?.copyWith(color: Colors.white),
-      ),
-    );
-  }
-}
